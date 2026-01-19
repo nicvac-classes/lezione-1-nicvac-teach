@@ -4,15 +4,19 @@
 import sys
 
 # uncomment the two following lines if you want to read/write from files
-sys.stdin = open('stairway_input0.txt')
+# sys.stdin = open('stairway_input1.txt')
+sys.stdin = open('input.txt')
 sys.stdout = open('output.txt', 'w')
 
 N = int(input().strip())
 
 B = 0
 
-
 # INSERT YOUR CODE HERE
+i = 1
+while i <= N:
+    B += i
+    i += 1
 
 
 print(B)
