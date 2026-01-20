@@ -1,6 +1,6 @@
 | Attenzione |
 | --- |
-| Per leggere correttamente questo documento, click destro su README.md e selezionare Open Preview. |
+| Per leggere correttamente questo documento, click destro su questo file e selezionare Open Preview. |
 
 # Introduzione a Pygame: Muovere un cerchio con la tastiera
 
