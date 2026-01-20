@@ -21,7 +21,7 @@ Al termine della lezione avremo un programma che:
 │                                 │
 │                                 │
 │              ●                  │
-│           (cerchio             │
+│           (cerchio              │
 │            mobile)              │
 │                                 │
 │                                 │
