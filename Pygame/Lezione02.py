@@ -38,22 +38,22 @@ floor.friction = 0.5
 space.add(floor)                                                  
 
 # Rampa inclinata
-ramp = pymunk.Segment(space.static_body, (0, 400), (300, 500), 5)  # 🆕
-ramp.elasticity = 0.8                                              # 🆕
-ramp.friction = 0.5                                                # 🆕
-space.add(ramp)                                                    # 🆕
+ramp = pymunk.Segment(space.static_body, (0, 400), (300, 500), 5)
+ramp.elasticity = 0.8                                            
+ramp.friction = 0.5                                              
+space.add(ramp)                                                  
 
 # Parete sinistra
-left_wall = pymunk.Segment(space.static_body, (0, 0), (0, 600), 5)   # 🆕
-left_wall.elasticity = 0.8                                           # 🆕
-left_wall.friction = 0.5                                             # 🆕
-space.add(left_wall)                                                 # 🆕
+left_wall = pymunk.Segment(space.static_body, (0, 0), (0, 600), 5)
+left_wall.elasticity = 0.8                                        
+left_wall.friction = 0.5                                          
+space.add(left_wall)                                              
 
 # Parete destra
-right_wall = pymunk.Segment(space.static_body, (800, 0), (800, 600), 5)  # 🆕
-right_wall.elasticity = 0.8                                              # 🆕
-right_wall.friction = 0.5                                                # 🆕
-space.add(right_wall)                                                    # 🆕
+right_wall = pymunk.Segment(space.static_body, (800, 0), (800, 600), 5)
+right_wall.elasticity = 0.8                                            
+right_wall.friction = 0.5                                              
+space.add(right_wall)                                                  
 
 # Renderer
 draw_options = pymunk.pygame_util.DrawOptions(screen)
@@ -68,21 +68,21 @@ while running:
             ball = create_ball(event.pos)
             balls.append( ball )
 
-        if event.type == pygame.KEYDOWN:              # 🆕
-                    if event.key == pygame.K_UP:              # 🆕
-                        space.gravity = (0, -900)             # 🆕
-                    if event.key == pygame.K_DOWN:            # 🆕
-                        space.gravity = (0, 900)              # 🆕
-                    if event.key == pygame.K_LEFT:            # 🆕
-                        space.gravity = (-900, 0)             # 🆕
-                    if event.key == pygame.K_RIGHT:           # 🆕
-                        space.gravity = (900, 0)              # 🆕
+        if event.type == pygame.KEYDOWN:           
+                    if event.key == pygame.K_UP:   
+                        space.gravity = (0, -900)  
+                    if event.key == pygame.K_DOWN: 
+                        space.gravity = (0, 900)   
+                    if event.key == pygame.K_LEFT: 
+                        space.gravity = (-900, 0)  
+                    if event.key == pygame.K_RIGHT:
+                        space.gravity = (900, 0)   
 
-        if event.type == pygame.KEYDOWN:              # 🆕
-                    if event.key == pygame.K_SPACE:           # 🆕
-                        for shape in balls:                   # 🆕
-                            space.remove(shape.body, shape)   # 🆕
-                        balls.clear()                         # 🆕
+        if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:        
+                        for shape in balls:                
+                            space.remove(shape.body, shape)
+                        balls.clear()                      
 
     screen.fill((30, 30, 50))
     space.debug_draw(draw_options)
