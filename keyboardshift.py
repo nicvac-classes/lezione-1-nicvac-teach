@@ -6,8 +6,8 @@ import sys
 # se preferisci leggere e scrivere da file
 # ti basta decommentare le seguenti due righe:
 
-sys.stdin = open('keyboardshift_input2.txt')
-sys.stdout = open('output.txt', 'w')
+#sys.stdin = open('keyboardshift_input2.txt')
+#sys.stdout = open('output.txt', 'w')
 
 
 # input data
