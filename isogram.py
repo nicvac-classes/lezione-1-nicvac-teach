@@ -4,8 +4,8 @@
 
 import sys
 
-#sys.stdin = open('isogram_input1.txt')
-#sys.stdout = open('output.txt', 'w')
+sys.stdin = open('isogram_input1.txt')
+sys.stdout = open('output.txt', 'w')
 
 # contatore delle parole isogram
 risposta = 0
