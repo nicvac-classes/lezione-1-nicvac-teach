@@ -242,7 +242,7 @@ Usare le frecce SX e DX per ruotare il canestro di 90° alla volta, con un'**ani
 
 | Elemento | Descrizione |
 |----------|-------------|
-| `pygame.KEYDOWN` | 🆕 Evento che si attiva **una sola volta** quando un tasto viene premuto (a differenza di `get_pressed()` che rileva la pressione continua, v. Lezione 01). |
+| `pygame.KEYDOWN` | 🆕 Evento che si attiva quando un tasto viene premuto |
 | `event.key` | 🆕 Il tasto specifico associato all'evento `KEYDOWN`. |
 | `pygame.K_LEFT`, `pygame.K_RIGHT` | Le costanti per i tasti freccia (v. Lezione 01). |
 | `target_rotation_angle` | 🆕 L'angolo obiettivo verso cui `rotation_angle` si muove progressivamente. |
@@ -250,24 +250,20 @@ Usare le frecce SX e DX per ruotare il canestro di 90° alla volta, con un'**ani
 
 ### Come combinarli
 
-In Lezione 01 abbiamo usato `pygame.key.get_pressed()` per il movimento continuo del cerchio. Qui vogliamo qualcosa di diverso: **una sola rotazione per ogni pressione del tasto**, ma con un'**animazione fluida**.
-
 Il meccanismo è:
 1. Alla pressione del tasto, aggiorniamo `target_rotation_angle` di ±π/2 (90°)
 2. Ad ogni frame, `rotation_angle` si avvicina a `target_rotation_angle` con velocità costante `ROTATION_SPEED`
 3. Quando la differenza è minore di `ROTATION_SPEED`, `rotation_angle` viene impostato esattamente a `target_rotation_angle`
 
-Usiamo l'evento `KEYDOWN` invece di `get_pressed()`:
-- `KEYDOWN` si attiva **una volta** quando il tasto viene premuto
-- `get_pressed()` si attiva **ogni frame** finché il tasto è tenuto premuto
-
+Usiamo l'evento `KEYDOWN`
 1. Nel ciclo degli eventi, controlla se `event.type == pygame.KEYDOWN`
 2. Se `event.key == pygame.K_LEFT` → incrementa `target_rotation_angle` di `math.pi / 2`
 3. Se `event.key == pygame.K_RIGHT` → decrementa `target_rotation_angle` di `math.pi / 2`
 4. Nel game loop, ad ogni frame, avvicina `rotation_angle` a `target_rotation_angle`:
-   - Calcola la differenza `diff`
+   - Se `rotation_angle` è diverso da `target_rotation_angle`
+   - Calcola la differenza `diff` fra `target_rotation_angle` e `rotation_angle`
    - Se `abs(diff) <= ROTATION_SPEED` → imposta direttamente al target
-   - Altrimenti → incrementa/decrementa di `ROTATION_SPEED`
+   - Altrimenti → incrementa/decrementa `rotation_angle` di `ROTATION_SPEED` a seconda che `diff` sia positivo/negativo
 
 ### Esercizio
 
@@ -283,7 +279,7 @@ Valori da usare:
 
 ```python
 # --- Variabili di gioco ---
-rotation_angle = 0.0                                                       # 🆕
+rotation_angle = 0.0  # angolo di rotazione del canestro (in radianti)
 target_rotation_angle = 0.0                                                # 🆕
 
 running = True
@@ -401,13 +397,13 @@ Disegnare la pallina con il suo colore e far avanzare la simulazione Pymunk, cos
 
 ### Come combinarli
 
-In Lezione 02 abbiamo usato `debug_draw` per disegnare tutto automaticamente. Questa volta **disegniamo a mano** perché vogliamo controllare i colori.
+In Lezione 02 abbiamo usato `debug_draw` per disegnare le palline automaticamente nel main loop. Questa volta **disegniamo a mano** con pygame.draw.circle perché vogliamo maggior controllo, pur continuando a far calcolare automaticamente le nuove coordinate da pymunk ad ogni loop.
 
 1. Nel game loop, dopo `draw_basket()`:
-   - Leggi la posizione dal body Pymunk: `ball["body"].position`
+   - Leggi la posizione dal body Pymunk: `ball["body"].position` per ottenere le nuove coordinate calcolate da pymunk
    - Converti le coordinate in interi (Pygame vuole interi)
-   - Leggi il colore (eventualmente modificato dal fade) con `ball.get("draw_color", ball["color"])`
-   - Leggi il raggio (eventualmente modificato dal rimpicciolimento) con `ball.get("draw_radius", BALL_RADIUS)`
+   - Leggi il colore dalle proprietà della pallina con `ball.get("draw_color", ball["color"])`
+   - Leggi il raggio dalle proprietà della pallina con `ball.get("draw_radius", BALL_RADIUS)`
    - Disegna il cerchio con `pygame.draw.circle()`
 2. Chiama `space.step(1/FPS)` per far avanzare la fisica (v. Lezione 02)
 
