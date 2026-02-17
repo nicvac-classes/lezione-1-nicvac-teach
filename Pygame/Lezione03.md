@@ -1,4 +1,8 @@
-# [POC26][Pygame] Lezione 03 — Color Basket 🎯
+| Attenzione |
+| --- |
+| Per leggere correttamente questo documento, click destro su questo file e selezionare Open Preview. |
+
+# [Pygame] Lezione 03 — Color Basket 🎯
 
 Costruiamo un gioco di riflessi e logica: una pallina colorata cade dall'alto con gravità reale e dobbiamo catturarla ruotando un canestro circolare diviso in quattro spicchi colorati. Solo lo spicchio giusto la cattura — quello sbagliato la rimbalza via lateralmente. Dietro questo gioco si nascondono nuovi concetti: il disegno di archi, la rotazione smooth con angoli e il rilevamento delle collisioni.
 

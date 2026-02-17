@@ -1,3 +1,7 @@
+| Attenzione |
+| --- |
+| Per leggere correttamente questo documento, click destro su questo file e selezionare Open Preview. |
+
 # Lezione 02 - Introduzione a Pymunk
 
 ## Cos'è Pymunk?
