@@ -52,17 +52,16 @@ space.gravity = (0, 400)
 def create_basket():
     # Disegna il canestro con i 4 colori, il primo colore in alto
     size = BASKET_RADIUS * 2
-    surface = pygame.Surface((size,size), pygame.SRCALPHA) # sfondo trasparente
     center = (size//2, size//2)
-    rect = pygame.Rect(0,0,size,size)
-    rect.center = center
 
-    #L' angolo 0 è alle ore 15:00 e cresce in senso antiorario
+    surface = pygame.Surface((size,size), pygame.SRCALPHA) # sfondo trasparente
+
+    #L'angolo 0 è alle ore 15:00 e cresce in senso antiorario
     angle_step = math.pi/2 # 90 gradi
     angle_start = math.pi/4 # Parto da 45 gradi
     angle_stop  = angle_start + angle_step
     for i in range(4):
-        pygame.draw.arc(surface, COLORS[i], rect, angle_start, angle_stop, 8 )
+        pygame.draw.arc(surface, COLORS[i], surface.get_rect(), angle_start, angle_stop, 8 )
         angle_start = angle_stop
         angle_stop += angle_step
 
@@ -74,7 +73,7 @@ def create_basket():
     basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC) 
     basket_body.position = BASKET_CENTER
 
-    # Sensore per rilevare la collisione con la pallina
+    # Definiamo la forma e la impostiamo come sensore per rilevare la collisione con la pallina
     basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)
     basket_shape.sensor = True
     basket_shape.collision_type = COLLISION_TYPE_BASKET
@@ -88,11 +87,12 @@ def create_basket():
 def draw_basket(screen, basket):
     """Ruota la superficie pre-disegnata in base all'angolo del body e la disegna."""
     basket_body = basket["body"]
-    basket_surf = basket["surface"]
+    basket_surface = basket["surface"]
     angle_deg = math.degrees(basket_body.angle)
-    rotated = pygame.transform.rotate(basket_surf, angle_deg)
-    rect = rotated.get_rect(center=(int(basket_body.position.x), int(basket_body.position.y)))
-    screen.blit(rotated, rect)
+    surface_rotated = pygame.transform.rotate(basket_surface, angle_deg)
+    rect_new = surface_rotated.get_rect(center=basket_body.position)
+    # Copia una superficie sull'altra
+    screen.blit(surface_rotated, rect_new)
 
 # Palla
 def create_ball():
