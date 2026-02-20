@@ -57,8 +57,10 @@ def create_basket():
     rect = pygame.Rect(0,0,size,size)
     rect.center = center
 
-    angle_start, angle_stop = -math.pi/4, math.pi/4
-    angle_step = math.pi/2
+    #L' angolo 0 è alle ore 15:00 e cresce in senso antiorario
+    angle_step = math.pi/2 # 90 gradi
+    angle_start = math.pi/4 # Parto da 45 gradi
+    angle_stop  = angle_start + angle_step
     for i in range(4):
         pygame.draw.arc(surface, COLORS[i], rect, angle_start, angle_stop, 8 )
         angle_start = angle_stop
@@ -73,22 +75,20 @@ def create_basket():
     basket_body.position = BASKET_CENTER
 
     # Sensore per rilevare la collisione con la pallina
-    basket_sensor = pymunk.Circle(basket_body, BASKET_RADIUS)
-    basket_sensor.sensor = True
-    basket_sensor.collision_type = COLLISION_TYPE_BASKET
+    basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)
+    basket_shape.sensor = True
+    basket_shape.collision_type = COLLISION_TYPE_BASKET
 
     # Aggiungo allo spazio fisico il canestro
-    space.add(basket_body, basket_sensor)
+    space.add(basket_body, basket_shape)
 
     return {"body": basket_body, "surface": surface}
 
 
 def draw_basket(screen, basket):
-
+    """Ruota la superficie pre-disegnata in base all'angolo del body e la disegna."""
     basket_body = basket["body"]
     basket_surf = basket["surface"]
-
-    """Ruota la superficie pre-disegnata in base all'angolo del body e la disegna."""
     angle_deg = math.degrees(basket_body.angle)
     rotated = pygame.transform.rotate(basket_surf, angle_deg)
     rect = rotated.get_rect(center=(int(basket_body.position.x), int(basket_body.position.y)))
@@ -97,19 +97,23 @@ def draw_basket(screen, basket):
 # Palla
 def create_ball():
     """Crea una pallina con colore casuale che cade dall'alto."""
-    #@@@ color = random.choice(COLORS)
-    color = RED
+    color = random.choice(COLORS)
     x = BASKET_CENTER[0]
     mass = 1
     moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)
-    body = pymunk.Body(mass, moment)
-    body.position = (x, BALL_START_Y)
-    shape = pymunk.Circle(body, BALL_RADIUS)
-    shape.elasticity = 0.7
-    shape.friction = 0.5
-    shape.collision_type = COLLISION_TYPE_BALL
-    space.add(body, shape)
-    return {"body": body, "shape": shape, "color": color}
+    ball_body = pymunk.Body(mass, moment)
+    ball_body.position = (x, BALL_START_Y)
+    ball_shape = pymunk.Circle(ball_body, BALL_RADIUS)
+    ball_shape.elasticity = 0.7
+    ball_shape.friction = 0.5
+    ball_shape.collision_type = COLLISION_TYPE_BALL
+    space.add(ball_body, ball_shape)
+    return {"body": ball_body, "shape": ball_shape, "color": color}
+
+def draw_ball( screen, ball):
+    pos = ball["body"].position
+    pygame.draw.circle(screen, ball["color"],
+                       (int(pos.x), int(pos.y)), BALL_RADIUS)
 
 
 def remove_ball(ball):
@@ -209,11 +213,9 @@ while running:
         if by > HEIGHT + 50:
             reset_ball()
 
-    # --- Disegno ---
+    # --- Disegno gli oggetti ---
     draw_basket(screen, basket)
-    pos = ball["body"].position
-    pygame.draw.circle(screen, ball["color"],
-                       (int(pos.x), int(pos.y)), BALL_RADIUS)
+    draw_ball(screen, ball)
 
     pygame.display.flip()
     clock.tick(FPS)
