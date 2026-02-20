@@ -43,19 +43,30 @@ space.gravity = (0, 400)
 # ============================================================
 # FUNZIONI DI DISEGNO
 # ============================================================
-def draw_basket(surface, center, radius, colors, rotation_angle):
-    #Disegna il canestro con 4 spicchi colorati (spicchio centrato in alto).
-    cx, cy = center
-    rect = pygame.Rect(cx - radius, cy - radius, radius * 2, radius * 2)
+def create_basket_surface(radius, colors):
+    """Crea una superficie con il canestro disegnato una sola volta."""
+    size = radius * 2 + 2
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    center = (size // 2, size // 2)
+    rect = pygame.Rect(0, 0, radius * 2, radius * 2)
+    rect.center = center
 
     for i in range(4):
-        start_angle = i * math.pi / 2 + math.pi / 4 + rotation_angle
-        end_angle = (i + 1) * math.pi / 2 + math.pi / 4 + rotation_angle
-        pygame.draw.arc(surface, colors[i],
-                        rect, start_angle, end_angle, 8)
+        start_angle = i * math.pi / 2 + math.pi / 4
+        end_angle = (i + 1) * math.pi / 2 + math.pi / 4
+        pygame.draw.arc(surf, colors[i], rect, start_angle, end_angle, 8)
 
     # Interno del canestro
-    pygame.draw.circle(surface, DARK_BG, center, radius - 8)
+    pygame.draw.circle(surf, DARK_BG, center, radius - 8)
+    return surf
+
+
+def draw_basket(surface, body, basket_surf):
+    """Ruota la superficie pre-disegnata in base all'angolo del body e la disegna."""
+    angle_deg = math.degrees(body.angle)
+    rotated = pygame.transform.rotate(basket_surf, angle_deg)
+    rect = rotated.get_rect(center=(int(body.position.x), int(body.position.y)))
+    surface.blit(rotated, rect)
 
 # ============================================================
 # FUNZIONI DI GIOCO
@@ -102,12 +113,14 @@ basket_sensor.collision_type = 2
 
 space.add(basket_body, basket_sensor)
 
+# Superficie del canestro (disegnata una sola volta)
+basket_surface = create_basket_surface(BASKET_RADIUS, COLORS)
+
 # ============================================================
 # COLLISION HANDLER
 # ============================================================
 caught = False
 missed = False
-rotation_angle = 0.0
 target_rotation_angle = 0.0
 basket_top_index = 0  # indice del colore in alto nel canestro
 basket_top_color = COLORS[basket_top_index]
@@ -145,24 +158,23 @@ while running:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 target_rotation_angle += math.pi / 2
+                basket_body.angular_velocity = ROTATION_SPEED * FPS
                 basket_top_index = (basket_top_index - 1) % 4
                 basket_top_color = COLORS[basket_top_index]
             elif event.key == pygame.K_RIGHT:
                 target_rotation_angle -= math.pi / 2
+                basket_body.angular_velocity = -ROTATION_SPEED * FPS
                 basket_top_index = (basket_top_index + 1) % 4
                 basket_top_color = COLORS[basket_top_index]
 
     screen.fill(DARK_BG)
 
-    # --- Rotazione smooth a velocità costante ---
-    if rotation_angle != target_rotation_angle:
-        diff = target_rotation_angle - rotation_angle
+    # --- Rotazione smooth via pymunk ---
+    if basket_body.angular_velocity != 0:
+        diff = target_rotation_angle - basket_body.angle
         if abs(diff) <= ROTATION_SPEED:
-            rotation_angle = target_rotation_angle
-        elif diff > 0:
-            rotation_angle += ROTATION_SPEED
-        else:
-            rotation_angle -= ROTATION_SPEED
+            basket_body.angle = target_rotation_angle
+            basket_body.angular_velocity = 0
 
     # --- Logica di gioco ---
     if caught:
@@ -182,7 +194,7 @@ while running:
             reset_ball()
 
     # --- Disegno ---
-    draw_basket(screen, BASKET_CENTER, BASKET_RADIUS, COLORS, rotation_angle)
+    draw_basket(screen, basket_body, basket_surface)
     pos = ball["body"].position
     pygame.draw.circle(screen, ball["color"],
                        (int(pos.x), int(pos.y)), BALL_RADIUS)
