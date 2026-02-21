@@ -2,731 +2,103 @@
 | --- |
 | Per leggere correttamente questo documento, click destro su questo file e selezionare Open Preview. |
 
-# [Pygame] Lezione 03 — Color Basket 🎯
+# Lezione 03 - Color Basket
 
-Costruiamo un gioco di riflessi e logica: una pallina colorata cade dall'alto con gravità reale e dobbiamo catturarla ruotando un canestro circolare diviso in quattro spicchi colorati. Solo lo spicchio giusto la cattura — quello sbagliato la rimbalza via lateralmente. Dietro questo gioco si nascondono nuovi concetti: il disegno di archi, la rotazione smooth con angoli e il rilevamento delle collisioni.
+## Introduzione
 
----
+In questa lezione costruiremo un piccolo gioco: **Color Basket**.
 
-## Cosa costruiremo
+Una palla colorata cade dall'alto per effetto della gravità. In basso c'è un canestro il cui bordo è diviso in 4 colori. Il giocatore può ruotare il canestro con le frecce direzionali. Se il colore in alto sul canestro corrisponde a quello della palla, la palla entra nel canestro. Altrimenti, rimbalza via!
 
-Un gioco chiamato **Color Basket** in cui:
+Utilizzeremo le conoscenze acquisite nelle lezioni precedenti:
+- **Lezione 01**: finestra, game loop, gestione eventi, tastiera, frame rate, chiusura
+- **Lezione 02**: spazio fisico Pymunk, gravità, body, shape, elasticità, attrito, `space.step()`
 
-- Una pallina di colore casuale (tra 4 possibili) cade dall'alto con la gravità di Pymunk (v. Lezione 02)
-- In basso c'è un **canestro circolare** diviso in **4 spicchi colorati**, proporzionato alla pallina come un canestro NBA
-- Con le **frecce SX/DX** possiamo **ruotare il canestro di 90°** con un'animazione fluida a velocità costante, cambiando quale colore si trova in alto
-- Se lo **spicchio in alto corrisponde** al colore della palla → **presa!** La palla rallenta, scende nel canestro e scompare
-- Se il colore **non corrisponde** → la palla **rimbalza via lateralmente**
-- Dopo ogni palla (catturata o mancata), ne viene generata una nuova
-
----
-
-## Concetti riutilizzati dalle lezioni precedenti
-
-| Concetto | Lezione |
-|----------|---------|
-| Finestra, game loop, eventi, clock | Lezione 01 |
-| Spazio fisico `pymunk.Space()` e gravità | Lezione 02 |
-| Creare body e shape (pallina) | Lezione 02 |
-| `space.step()` per avanzare la simulazione | Lezione 02 |
-
-## Concetti nuovi in questa lezione
-
-| Concetto | Descrizione |
-|----------|-------------|
-| `pygame.draw.arc()` | Disegnare archi (spicchi del canestro) |
-| `pygame.draw.circle()` con spessore | Disegnare cerchi vuoti |
-| Rotazione smooth con angoli float | Ruotare il canestro in modo fluido a velocità costante |
-| `pygame.KEYDOWN` | Reagire alla singola pressione di un tasto |
-| Collisioni Pymunk con `on_collision` | Reagire quando la palla tocca il canestro |
-| `shape.sensor` | Shape che rileva collisioni senza bloccare fisicamente |
-| `body.velocity` | Impostare la velocità di un corpo Pymunk |
+E impareremo concetti nuovi:
+- Disegnare oggetti personalizzati con le **Surface** trasparenti
+- Usare `pygame.draw.arc` per disegnare archi colorati
+- Il body **KINEMATIC** (controllabile dal codice, non soggetto a gravità)
+- Le **collisioni personalizzate** con sensori e callback
+- La **rotazione** grafica e fisica degli oggetti
 
 ---
 
-## Blocco 1 — La finestra, lo spazio fisico e le costanti di gioco
+## Scaletta
+
+| Blocco | Argomento |
+|--------|-----------|
+| 1 | Scheletro e costanti |
+| 2 | Spazio fisico e gravità |
+| 3 | Creare la palla: Surface trasparente e colore casuale |
+| 4 | Dare fisicità alla palla: body dinamico e shape |
+| 5 | Disegnare la palla con `blit` |
+| 6 | Creare il canestro: archi colorati con `arc` |
+| 7 | Dare fisicità al canestro: body KINEMATIC e sensore |
+| 8 | Disegnare il canestro con rotazione |
+| 9 | Ruotare il canestro con le frecce |
+| 10 | Gestire le collisioni |
+| 11 | Logica di gioco: caught, missed, reset |
+
+---
+
+## Blocco 1 - Scheletro e costanti
 
 ### Obiettivo
 
-Preparare la struttura base: finestra Pygame, spazio Pymunk con gravità e tutte le costanti che useremo nel gioco.
+Ricreare lo scheletro base di un'applicazione Pygame (v. Lezione 01) e definire tutte le **costanti** che useremo nel gioco. Centralizzare i valori in costanti è una buona pratica: se vogliamo cambiare una dimensione o un colore, lo facciamo in un solo punto.
 
 ### Ingredienti
 
-Tutto già noto! (v. Lezione 01, Lezione 02)
-
-Nuovi solo i **colori del gioco** che definiamo come costanti.
+Già visti nella Lezione 01:
 
 | Elemento | Descrizione |
 |----------|-------------|
-| `COLORS = [RED, GREEN, BLUE, YELLOW]` | I 4 colori del gioco, come tuple RGB |
-| `WIDTH, HEIGHT` | Dimensioni della finestra |
-| `BASKET_CENTER` | Posizione del canestro |
-| `BASKET_RADIUS` | Raggio del canestro (proporzionato alla pallina come NBA: rim/ball ≈ 1.9) |
-| `ROTATION_SPEED` | 🆕 Velocità di rotazione del canestro in radianti/frame |
+| `pygame.init()` | Inizializza Pygame |
+| `pygame.display.set_mode((larghezza, altezza))` | Crea la finestra |
+| `pygame.display.set_caption("titolo")` | Imposta il titolo |
+| `pygame.time.Clock()` | Crea l'orologio per il frame rate |
+| `pygame.event.get()` | Recupera gli eventi |
+| `pygame.QUIT` | Evento di chiusura finestra |
+| `screen.fill((R, G, B))` | Riempie lo sfondo |
+| `pygame.display.flip()` | Aggiorna lo schermo |
+| `clock.tick(FPS)` | Limita il frame rate |
+| `pygame.quit()` / `sys.exit()` | Chiusura pulita |
+
+Nuovo:
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `import math` | Libreria matematica, ci servirà per angoli e rotazioni |
+| `import random` | Per scegliere colori casuali |
+| Costanti (`WIDTH`, `HEIGHT`, `FPS`, colori, ecc.) | Valori fissi usati in tutto il programma, definiti una sola volta |
 
 ### Come combinarli
 
 1. Importa `pygame`, `pymunk`, `sys`, `random` e `math`
-2. Definisci le costanti della finestra e del gioco:
-   - Dimensioni finestra: `WIDTH, HEIGHT = 600, 700`
-   - FPS: `FPS = 60`
-   - Colori: `RED = (220, 50, 50)`, `GREEN = (50, 200, 50)`, `BLUE = (50, 100, 220)`, `YELLOW = (240, 220, 50)`, `DARK_BG = (30, 30, 50)`
-   - Lista colori: `COLORS = [RED, GREEN, BLUE, YELLOW]`
-3. Definisci le costanti del canestro:
-   - Centro: `BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)` — centrato orizzontalmente, in basso
-   - Raggio: `BASKET_RADIUS = 29` — proporzionato alla pallina come NBA (diametro canestro NBA ≈ 46 cm, pallone ≈ 24 cm → rapporto ≈ 1.9, quindi 15 × 1.9 ≈ 29)
-4. Definisci le costanti della pallina:
-   - Raggio: `BALL_RADIUS = 15`
-   - Posizione di partenza: `BALL_START_Y = 50` — poco sotto il bordo superiore
-   - Velocità di rotazione: `ROTATION_SPEED = math.pi / 20` — circa 9° per frame, una rotazione completa di 90° in circa 10 frame (~0.17 secondi a 60 FPS)
-5. Inizializza Pygame, crea la finestra e il clock (v. Lezione 01)
-6. Crea lo spazio Pymunk con gravità `(0, 400)` — più lenta della Lezione 02, così il giocatore ha tempo di reagire (v. Lezione 02)
+2. Definisci le costanti per le dimensioni della finestra: `WIDTH, HEIGHT = 600, 700` e `FPS = 60`
+3. Definisci i 4 colori come tuple RGB:
+   - `RED = (220, 50, 50)`
+   - `GREEN = (50, 200, 50)`
+   - `BLUE = (50, 100, 220)`
+   - `YELLOW = (240, 220, 50)`
+   - `DARK_BG = (30, 30, 50)` per lo sfondo
+   - `COLORS = [RED, GREEN, BLUE, YELLOW]` — la lista dei colori
+4. Definisci le costanti per la palla: `BALL_RADIUS = 15` e `BALL_START_Y = 50`
+5. Definisci le costanti per il canestro:
+   - `BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)` — posizione al centro in basso
+   - `BASKET_RADIUS = BALL_RADIUS * 1.9` — proporzionato alla pallina (come nella NBA, il rapporto canestro/palla è circa 1.9)
+   - `BASKET_ROTATION_STEP = math.pi / 20` — velocità di rotazione in radianti per frame
+6. Definisci le costanti per le collisioni: `COLLISION_TYPE_BALL = 1` e `COLLISION_TYPE_BASKET = 2` (le useremo più avanti)
+7. Inizializza Pygame con finestra, caption e clock (v. Lezione 01)
+8. Scrivi il game loop base: gestione `QUIT`, `screen.fill(DARK_BG)`, `pygame.display.flip()`, `clock.tick(FPS)`
+9. Chiusura pulita con `pygame.quit()` e `sys.exit()`
 
 ### Esercizio
 
-Scrivi il codice di setup con tutte le costanti elencate sopra e la finestra. Crea anche il game loop vuoto con solo `screen.fill(DARK_BG)` (v. Lezione 01).
+Scrivi lo scheletro completo con tutte le costanti elencate sopra. Esegui il programma: dovresti vedere una finestra 600x700 con sfondo scuro.
 
 <details>
 <summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-import pygame
-import pymunk
-import sys
-import random
-import math
-
-# --- Costanti ---
-WIDTH, HEIGHT = 600, 700
-FPS = 60
-
-# Colori del gioco
-RED    = (220, 50, 50)
-GREEN  = (50, 200, 50)
-BLUE   = (50, 100, 220)
-YELLOW = (240, 220, 50)
-DARK_BG = (30, 30, 50)
-
-COLORS = [RED, GREEN, BLUE, YELLOW]
-
-# Canestro
-BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
-BASKET_RADIUS = 29  # proporzionato alla pallina come NBA (rim/ball ≈ 1.9)
-
-# Pallina
-BALL_RADIUS = 15
-BALL_START_Y = 50
-ROTATION_SPEED = math.pi / 20  # rad/frame – 90° in ~0.17 s
-
-# --- Inizializzazione Pygame --- (v. Lezione 01)
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Color Basket")
-clock = pygame.time.Clock()
-
-# --- Spazio fisico Pymunk --- (v. Lezione 02)
-space = pymunk.Space()
-space.gravity = (0, 400)
-
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    screen.fill(DARK_BG)
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-sys.exit()
-```
-
-</details>
-
----
-
-## Blocco 2 — Disegnare il canestro (archi colorati)
-
-### Obiettivo
-
-Disegnare il canestro come un cerchio diviso in **4 spicchi colorati**. Ogni spicchio è un arco di 90°. Lo spicchio `COLORS[0]` deve essere **centrato in alto** sulla verticale (da −45° a +45° rispetto alla verticale), così che guardando il canestro si veda un solo colore chiaramente in cima.
-
-### Ingredienti
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `pygame.draw.arc(surface, colore, rect, angolo_inizio, angolo_fine, spessore)` | 🆕 Disegna un arco. Gli angoli sono in **radianti**. Il `rect` è il rettangolo che contiene il cerchio. |
-| `math.pi` | 🆕 Il valore di π (pi greco), serve per calcolare gli angoli in radianti. |
-| `rotation_angle` | 🆕 Variabile float che tiene traccia dell'angolo di rotazione attuale del canestro (in radianti). |
-
-### Come combinarli
-
-Il canestro è un cerchio diviso in 4 parti. Ogni parte copre 90° (cioè π/2 radianti).
-
-Gli angoli in Pygame partono da **destra** e vanno in **senso antiorario**. Per avere lo spicchio `COLORS[0]` centrato in alto, applichiamo un **offset di +π/4** (+45°) a ogni spicchio. In questo modo:
-
-- Spicchio 0 (`COLORS[0]`): da +45° a +135° → centrato in alto (90°)
-- Spicchio 1 (`COLORS[1]`): da +135° a +225° → centrato a sinistra (180°)
-- Spicchio 2 (`COLORS[2]`): da +225° a +315° → centrato in basso (270°)
-- Spicchio 3 (`COLORS[3]`): da +315° a +405° → centrato a destra (0°/360°)
-
-Usiamo `rotation_angle` (un angolo float in radianti) per ruotare tutti gli spicchi. Il colore di ogni spicchio è indicizzato direttamente da `i` — la rotazione è gestita dall'angolo, non dall'indice del colore.
-
-1. Crea una funzione `draw_basket(surface, center, radius, colors, rotation_angle)`
-2. Calcola il `rect` del cerchio: `pygame.Rect(cx - r, cy - r, r*2, r*2)`
-3. Per ogni spicchio `i` (da 0 a 3):
-   - L'angolo di inizio è `i * math.pi / 2 + math.pi / 4 + rotation_angle`
-   - L'angolo di fine è `(i + 1) * math.pi / 2 + math.pi / 4 + rotation_angle`
-   - Il colore è `colors[i]` (la rotazione è nell'angolo, non nell'indice)
-   - Disegna l'arco con spessore `8`
-4. Disegna un cerchio color `DARK_BG` pieno al centro con raggio `radius - 8` (l'interno del canestro)
-
-### Esercizio
-
-Crea la funzione `draw_basket(surface, center, radius, colors, rotation_angle)` e chiamala nel game loop dopo `screen.fill()`. Inizializza `rotation_angle = 0.0`.
-
-Valori da usare:
-- Spessore arco: `8` pixel
-- Raggio cerchio interno (sfondo): `radius - 8` (così copre l'interno senza sovrapporre gli archi)
-- Colore cerchio interno: `DARK_BG` (lo sfondo)
-- Offset iniziale di ogni spicchio: `+math.pi / 4` (+45°) — così `COLORS[0]` è centrato in alto
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-# --- Variabili di gioco ---
-rotation_angle = 0.0                                                       # 🆕
-
-def draw_basket(surface, center, radius, colors, rotation_angle):          # 🆕
-    """Disegna il canestro con 4 spicchi colorati (spicchio centrato in alto)."""
-    cx, cy = center                                                        # 🆕
-    rect = pygame.Rect(cx - radius, cy - radius, radius * 2, radius * 2)  # 🆕
-                                                                           # 🆕
-    for i in range(4):                                                     # 🆕
-        start_angle = i * math.pi / 2 + math.pi / 4 + rotation_angle      # 🆕
-        end_angle = (i + 1) * math.pi / 2 + math.pi / 4 + rotation_angle  # 🆕
-        pygame.draw.arc(surface, colors[i],                                # 🆕
-                        rect, start_angle, end_angle, 8)                   # 🆕
-                                                                           # 🆕
-    # Interno del canestro                                                 # 🆕
-    pygame.draw.circle(surface, DARK_BG, center, radius - 8)              # 🆕
-
-# --- Game loop ---
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    screen.fill(DARK_BG)
-    draw_basket(screen, BASKET_CENTER, BASKET_RADIUS, COLORS, rotation_angle)  # 🆕
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-sys.exit()
-```
-
-</details>
-
----
-
-## Blocco 3 — Ruotare il canestro con le frecce (animazione smooth)
-
-### Obiettivo
-
-Usare le frecce SX e DX per ruotare il canestro di 90° alla volta, con un'**animazione fluida a velocità costante** (non un salto istantaneo). Tenere traccia di quale colore è in alto con un semplice indice.
-
-### Ingredienti
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `pygame.KEYDOWN` | 🆕 Evento che si attiva **una sola volta** quando un tasto viene premuto (a differenza di `get_pressed()` che rileva la pressione continua, v. Lezione 01). |
-| `event.key` | 🆕 Il tasto specifico associato all'evento `KEYDOWN`. |
-| `pygame.K_LEFT`, `pygame.K_RIGHT` | Le costanti per i tasti freccia (v. Lezione 01). |
-| `target_rotation_angle` | 🆕 L'angolo obiettivo verso cui `rotation_angle` si muove progressivamente. |
-| `basket_top_index` | 🆕 L'indice in `COLORS` del colore attualmente in alto nel canestro. |
-| `ROTATION_SPEED` | La velocità costante (radianti/frame) con cui l'angolo si avvicina all'obiettivo. |
-
-### Come combinarli
-
-In Lezione 01 abbiamo usato `pygame.key.get_pressed()` per il movimento continuo del cerchio. Qui vogliamo qualcosa di diverso: **una sola rotazione per ogni pressione del tasto**, ma con un'**animazione fluida**.
-
-Il meccanismo è:
-1. Alla pressione del tasto, aggiorniamo `target_rotation_angle` di ±π/2 (90°)
-2. Contemporaneamente aggiorniamo `basket_top_index` per tenere traccia di quale colore è in alto
-3. Ad ogni frame, `rotation_angle` si avvicina a `target_rotation_angle` con velocità costante `ROTATION_SPEED`
-4. Quando la differenza è minore di `ROTATION_SPEED`, `rotation_angle` viene impostato esattamente a `target_rotation_angle`
-
-Per il colore in alto usiamo un semplice indice:
-- All'inizio `basket_top_index = 0` → il colore in alto è `COLORS[0]` (RED)
-- LEFT ruota in senso antiorario → il colore successivo sale in alto → `basket_top_index = (basket_top_index - 1) % 4`
-- RIGHT ruota in senso orario → il colore precedente sale → `basket_top_index = (basket_top_index + 1) % 4`
-
-Implementazione:
-1. Nel ciclo degli eventi, controlla se `event.type == pygame.KEYDOWN`
-2. Se `event.key == pygame.K_LEFT`:
-   - `target_rotation_angle += math.pi / 2`
-   - `basket_top_index = (basket_top_index - 1) % 4`
-   - `basket_top_color = COLORS[basket_top_index]`
-3. Se `event.key == pygame.K_RIGHT`:
-   - `target_rotation_angle -= math.pi / 2`
-   - `basket_top_index = (basket_top_index + 1) % 4`
-   - `basket_top_color = COLORS[basket_top_index]`
-4. Nel game loop, ad ogni frame, avvicina `rotation_angle` a `target_rotation_angle`:
-   - Calcola la differenza `diff`
-   - Se `abs(diff) <= ROTATION_SPEED` → imposta direttamente al target
-   - Altrimenti → incrementa/decrementa di `ROTATION_SPEED`
-
-### Esercizio
-
-Aggiungi la gestione della rotazione smooth nel ciclo degli eventi e nel game loop. Prova a premere le frecce e verifica che gli spicchi ruotino in modo fluido.
-
-Valori da usare:
-- Inizializza `target_rotation_angle = 0.0`
-- Inizializza `basket_top_index = 0` e `basket_top_color = COLORS[0]`
-- Incremento/decremento dell'angolo per ogni pressione: `math.pi / 2` (90°)
-- Velocità di avvicinamento: `ROTATION_SPEED` (definita nel Blocco 1 come `math.pi / 20`)
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-# --- Variabili di gioco ---
-rotation_angle = 0.0
-target_rotation_angle = 0.0                                                # 🆕
-basket_top_index = 0                                                       # 🆕
-basket_top_color = COLORS[basket_top_index]                                # 🆕
-
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:                                   # 🆕
-            if event.key == pygame.K_LEFT:                                 # 🆕
-                target_rotation_angle += math.pi / 2                       # 🆕
-                basket_top_index = (basket_top_index - 1) % 4              # 🆕
-                basket_top_color = COLORS[basket_top_index]                # 🆕
-            elif event.key == pygame.K_RIGHT:                              # 🆕
-                target_rotation_angle -= math.pi / 2                       # 🆕
-                basket_top_index = (basket_top_index + 1) % 4              # 🆕
-                basket_top_color = COLORS[basket_top_index]                # 🆕
-
-    screen.fill(DARK_BG)
-
-    # --- Rotazione smooth a velocità costante ---                         # 🆕
-    if rotation_angle != target_rotation_angle:                            # 🆕
-        diff = target_rotation_angle - rotation_angle                      # 🆕
-        if abs(diff) <= ROTATION_SPEED:                                    # 🆕
-            rotation_angle = target_rotation_angle                         # 🆕
-        elif diff > 0:                                                     # 🆕
-            rotation_angle += ROTATION_SPEED                               # 🆕
-        else:                                                              # 🆕
-            rotation_angle -= ROTATION_SPEED                               # 🆕
-
-    draw_basket(screen, BASKET_CENTER, BASKET_RADIUS, COLORS, rotation_angle)
-    pygame.display.flip()
-    clock.tick(FPS)
-```
-
-</details>
-
----
-
-## Blocco 4 — Creare la pallina che cade
-
-### Obiettivo
-
-Creare una pallina Pymunk con un colore casuale che cade dall'alto verso il canestro, sempre allineata al centro del canestro.
-
-### Ingredienti
-
-Tutto già noto dalla Lezione 02! La novità è solo l'associazione di un **colore** alla pallina.
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `pymunk.Body(massa, momento)` | Crea un corpo dinamico (v. Lezione 02) |
-| `pymunk.Circle(body, raggio)` | Crea la forma circolare (v. Lezione 02) |
-| `pymunk.moment_for_circle(massa, 0, raggio)` | Calcola il momento d'inerzia (v. Lezione 02) |
-| `random.choice(lista)` | 🆕 Sceglie un elemento casuale da una lista. |
-
-### Come combinarli
-
-1. Crea una funzione `create_ball()` che:
-   - Sceglie un colore casuale con `random.choice(COLORS)`
-   - Crea un body Pymunk con massa `1`, posizionato in alto al centro del canestro (`BASKET_CENTER[0]`, `BALL_START_Y`)
-   - Crea una shape `pymunk.Circle` con raggio `BALL_RADIUS`
-   - Imposta elasticità a `0.7` e frizione a `0.5`
-   - Aggiunge body e shape allo spazio
-   - Restituisce un **dizionario** con `body`, `shape` e `color`
-2. Crea la prima pallina all'inizio del gioco
-
-### Esercizio
-
-Scrivi la funzione `create_ball()` e crea la prima pallina. Per ora non la disegniamo ancora — ci penseremo nel prossimo blocco.
-
-Valori da usare:
-- Massa: `1`
-- Posizione X: `BASKET_CENTER[0]` (centrata sul canestro)
-- Posizione Y: `BALL_START_Y` (`50`)
-- Raggio: `BALL_RADIUS` (`15`)
-- Elasticità: `0.7`
-- Frizione: `0.5`
-- La funzione deve restituire un dizionario con chiavi `"body"`, `"shape"` e `"color"`
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-def create_ball():                                                          # 🆕
-    """Crea una pallina con colore casuale che cade dall'alto."""            # 🆕
-    color = random.choice(COLORS)                                           # 🆕
-    x = BASKET_CENTER[0]                                                    # 🆕
-    mass = 1                                                                # 🆕
-    moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)                 # 🆕
-    body = pymunk.Body(mass, moment)                                        # 🆕
-    body.position = (x, BALL_START_Y)                                       # 🆕
-    shape = pymunk.Circle(body, BALL_RADIUS)                                # 🆕
-    shape.elasticity = 0.7                                                  # 🆕
-    shape.friction = 0.5                                                    # 🆕
-    shape.collision_type = 1                                                # 🆕
-    space.add(body, shape)                                                  # 🆕
-    return {"body": body, "shape": shape, "color": color}                   # 🆕
-
-# Crea la prima pallina                                                     # 🆕
-ball = create_ball()                                                        # 🆕
-```
-
-</details>
-
----
-
-## Blocco 5 — Disegnare la pallina e far avanzare la fisica
-
-### Obiettivo
-
-Disegnare la pallina con il suo colore e far avanzare la simulazione Pymunk, così la palla cade per gravità.
-
-### Ingredienti
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `pygame.draw.circle(surface, colore, (x, y), raggio)` | Disegna un cerchio (v. Lezione 01) |
-| `body.position` | La posizione attuale del corpo Pymunk (v. Lezione 02) |
-| `space.step(dt)` | Avanza la simulazione fisica (v. Lezione 02) |
-
-### Come combinarli
-
-In Lezione 02 abbiamo usato `debug_draw` per disegnare le palline automaticamente. Questa volta **disegniamo a mano** con `pygame.draw.circle` perché vogliamo assegnare a ogni pallina il suo colore specifico, ma continuiamo a far calcolare le coordinate da Pymunk ad ogni loop.
-
-1. Nel game loop, dopo `draw_basket()`:
-   - Leggi la posizione dal body Pymunk: `ball["body"].position`
-   - Converti le coordinate in interi (Pygame vuole interi): `int(pos.x)`, `int(pos.y)`
-   - Disegna il cerchio con `pygame.draw.circle(screen, ball["color"], (int(pos.x), int(pos.y)), BALL_RADIUS)`
-2. Chiama `space.step(1/FPS)` per far avanzare la fisica (v. Lezione 02)
-
-### Esercizio
-
-Aggiorna il game loop per disegnare la pallina e far avanzare la fisica. La pallina dovrebbe cadere verso il basso!
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-# --- Game loop ---
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                target_rotation_angle += math.pi / 2
-                basket_top_index = (basket_top_index - 1) % 4
-                basket_top_color = COLORS[basket_top_index]
-            elif event.key == pygame.K_RIGHT:
-                target_rotation_angle -= math.pi / 2
-                basket_top_index = (basket_top_index + 1) % 4
-                basket_top_color = COLORS[basket_top_index]
-
-    screen.fill(DARK_BG)
-
-    # Rotazione smooth
-    if rotation_angle != target_rotation_angle:
-        diff = target_rotation_angle - rotation_angle
-        if abs(diff) <= ROTATION_SPEED:
-            rotation_angle = target_rotation_angle
-        elif diff > 0:
-            rotation_angle += ROTATION_SPEED
-        else:
-            rotation_angle -= ROTATION_SPEED
-
-    draw_basket(screen, BASKET_CENTER, BASKET_RADIUS, COLORS, rotation_angle)
-
-    # Disegna la pallina                                                   # 🆕
-    pos = ball["body"].position                                            # 🆕
-    pygame.draw.circle(screen, ball["color"],                              # 🆕
-                       (int(pos.x), int(pos.y)), BALL_RADIUS)              # 🆕
-
-    space.step(1 / FPS)                                                    # 🆕
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-sys.exit()
-```
-
-</details>
-
----
-
-## Blocco 6 — Il sensore del canestro (collisioni Pymunk)
-
-### Obiettivo
-
-Creare il canestro come oggetto fisico Pymunk con un **sensore**, così la pallina può collidere con esso e la collisione viene gestita dal nostro codice.
-
-### Ingredienti
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `pymunk.Body(body_type=pymunk.Body.KINEMATIC)` | 🆕 Un corpo **cinematico**: non è influenzato dalla gravità ma può muoversi e collidere. Perfetto per il canestro. |
-| `pymunk.Circle(body, raggio)` | La forma circolare, usata qui come area del canestro (v. Lezione 02). |
-| `shape.sensor` | 🆕 Se `True`, la shape rileva le collisioni ma **non** blocca fisicamente gli oggetti. Questo ci permette di decidere nel codice se la palla passa o rimbalza. |
-| `shape.collision_type` | 🆕 Un numero identificativo per distinguere diversi tipi di oggetti nelle collisioni. |
-
-### Come combinarli
-
-Il canestro usa un **unico sensore** grande quanto il cerchio visivo. Essendo un sensore, non blocca fisicamente la pallina — saremo noi a gestire cosa succede nel callback della collisione.
-
-Usiamo `collision_type` per identificare gli oggetti:
-- `collision_type = 1` → pallina
-- `collision_type = 2` → sensore del canestro
-
-1. Crea un body cinematico per il canestro posizionato a `BASKET_CENTER`
-2. Aggiungi una shape circolare come sensore (`sensor = True`) con raggio `BASKET_RADIUS`
-3. Assegna `collision_type = 2` al sensore
-4. Assegna `collision_type = 1` alla pallina (in `create_ball()`)
-
-### Esercizio
-
-Crea il sensore fisico del canestro. Aggiorna anche `create_ball()` per assegnare `collision_type = 1` alla pallina.
-
-Valori da usare:
-- Tipo body canestro: `pymunk.Body.KINEMATIC`
-- Posizione: `BASKET_CENTER`
-- Raggio sensore: `BASKET_RADIUS` (uguale al cerchio visivo)
-- `sensor = True` (rileva collisioni senza bloccare)
-- `collision_type = 2` per il canestro, `collision_type = 1` per la pallina
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-# --- Canestro fisico --- 🆕
-basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)                 # 🆕
-basket_body.position = BASKET_CENTER                                        # 🆕
-
-# Sensore unico per rilevare la collisione con la pallina                   # 🆕
-basket_sensor = pymunk.Circle(basket_body, BASKET_RADIUS)                   # 🆕
-basket_sensor.sensor = True                                                 # 🆕
-basket_sensor.collision_type = 2                                            # 🆕
-
-space.add(basket_body, basket_sensor)                                       # 🆕
-```
-
-E aggiorna `create_ball()` aggiungendo prima di `space.add(...)`:
-
-```python
-    shape.collision_type = 1                                                # 🆕
-```
-
-</details>
-
----
-
-## Blocco 7 — Gestire la collisione: cattura o rimbalzo
-
-### Obiettivo
-
-Quando la pallina entra nel sensore del canestro, controlliamo se il colore corrisponde allo spicchio in alto. Se sì → la pallina rallenta e scende nel canestro. Se no → la palla viene lanciata via lateralmente.
-
-### Ingredienti
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `space.on_collision(tipo_a, tipo_b, begin=funzione)` | 🆕 Registra una funzione callback che viene chiamata quando due oggetti con i `collision_type` specificati si toccano. |
-| Valore di ritorno del callback | 🆕 Il callback restituisce `True` per elaborare la collisione normalmente o `False` per ignorarla (l'oggetto attraversa). |
-| `body.velocity` | 🆕 La velocità del corpo Pymunk. Si può impostare per rallentare o lanciare la palla. |
-
-### Come combinarli
-
-Nel callback della collisione usiamo `basket_top_color` (calcolato nel Blocco 3) per sapere quale colore è in alto:
-- Se il colore corrisponde → `caught = True`, reimpostiamo la velocità della pallina a `(0, 80)` per un effetto "satisfying" di entrata lenta nel canestro. Ritorniamo `False` (la palla attraversa il sensore).
-- Se non corrisponde → `missed = True`, lanciamo la pallina via lateralmente con una velocità casuale. Ritorniamo `False`.
-
-Usiamo due variabili di stato booleane:
-- `caught` → la palla è stata catturata (colore giusto)
-- `missed` → colore sbagliato, la palla vola via
-
-1. Definisci una funzione callback `on_ball_enter_basket(arbiter, space, data)`
-2. All'interno, controlla se la palla è già stata gestita (`caught or missed`) → se sì, ritorna `True`
-3. Confronta `ball["color"]` con `basket_top_color`
-4. Registra il callback con `space.on_collision(1, 2, begin=on_ball_enter_basket)`
-
-### Esercizio
-
-Crea il collision handler e le variabili di stato `caught` e `missed`.
-
-Valori da usare:
-- Velocità pallina al match: `(0, 80)` — scende lentamente nel canestro
-- Velocità rimbalzo laterale (colore sbagliato): `(direction * 300, -350)` con `direction = random.choice([-1, 1])`
-- Registra il callback con: `space.on_collision(1, 2, begin=on_ball_enter_basket)`
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-# --- Variabili di stato ---
-caught = False                                                             # 🆕
-missed = False                                                             # 🆕
-
-def on_ball_enter_basket(arbiter, space, data):                            # 🆕
-    """Callback: la pallina ha toccato il sensore del canestro."""          # 🆕
-    global caught, missed                                                  # 🆕
-    if caught or missed:                                                   # 🆕
-        return True                                                        # 🆕
-    if ball["color"] == basket_top_color:                                   # 🆕
-        caught = True                                                      # 🆕
-        ball["body"].velocity = (0, 80)                                    # 🆕
-    else:                                                                  # 🆕
-        missed = True                                                      # 🆕
-        direction = random.choice([-1, 1])                                 # 🆕
-        ball["body"].velocity = (direction * 300, -350)                    # 🆕
-    return False                                                           # 🆕
-
-space.on_collision(1, 2, begin=on_ball_enter_basket)                       # 🆕
-```
-
-</details>
-
----
-
-## Blocco 8 — Reset della pallina
-
-### Obiettivo
-
-Dopo la cattura o il rimbalzo, la pallina deve essere rimossa e ne viene creata una nuova. Se catturata, la pallina scompare quando raggiunge il centro del canestro. Se mancata, scompare quando esce dallo schermo.
-
-### Ingredienti
-
-| Elemento | Descrizione |
-|----------|-------------|
-| `space.remove(shape, body)` | 🆕 Rimuove un body e la sua shape dallo spazio fisico. |
-| `body.position.y` | La coordinata Y del corpo, per controllare se ha superato il centro del canestro. |
-
-### Come combinarli
-
-1. Crea una funzione `remove_ball(ball)` che rimuove body e shape dallo spazio
-2. Crea una funzione `reset_ball()` che:
-   - Rimuove la pallina corrente
-   - Crea una nuova pallina
-   - Resetta `caught` e `missed` a `False`
-3. Nel game loop, gestisci i tre casi:
-   - `caught`: la pallina scende lentamente. Quando la sua Y supera `BASKET_CENTER[1]` → `reset_ball()`
-   - `missed`: la pallina vola via. Quando esce dallo schermo (margine di 50 pixel) → `reset_ball()`
-   - Altrimenti (nessuna collisione): se la pallina cade oltre lo schermo → `reset_ball()`
-
-### Esercizio
-
-Implementa `remove_ball()`, `reset_ball()` e la logica di reset nel game loop.
-
-Valori da usare:
-- Soglia cattura: `ball["body"].position.y >= BASKET_CENTER[1]` (il centro del canestro)
-- Margine uscita schermo: `±50` pixel oltre i bordi (`bx < -50`, `bx > WIDTH + 50`, `by > HEIGHT + 50`)
-
-<details>
-<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
-
-```python
-def remove_ball(ball):                                                     # 🆕
-    """Rimuove la pallina dallo spazio fisico."""                           # 🆕
-    space.remove(ball["shape"], ball["body"])                               # 🆕
-
-def reset_ball():                                                          # 🆕
-    """Rimuove la pallina corrente e ne crea una nuova."""                  # 🆕
-    global ball, caught, missed                                            # 🆕
-    remove_ball(ball)                                                      # 🆕
-    ball = create_ball()                                                   # 🆕
-    caught = False                                                         # 🆕
-    missed = False                                                         # 🆕
-
-# --- Aggiorna il game loop ---
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                target_rotation_angle += math.pi / 2
-                basket_top_index = (basket_top_index - 1) % 4
-                basket_top_color = COLORS[basket_top_index]
-            elif event.key == pygame.K_RIGHT:
-                target_rotation_angle -= math.pi / 2
-                basket_top_index = (basket_top_index + 1) % 4
-                basket_top_color = COLORS[basket_top_index]
-
-    screen.fill(DARK_BG)
-
-    # Rotazione smooth a velocità costante
-    if rotation_angle != target_rotation_angle:
-        diff = target_rotation_angle - rotation_angle
-        if abs(diff) <= ROTATION_SPEED:
-            rotation_angle = target_rotation_angle
-        elif diff > 0:
-            rotation_angle += ROTATION_SPEED
-        else:
-            rotation_angle -= ROTATION_SPEED
-
-    # --- Logica di gioco ---                                              # 🆕
-    if caught:                                                             # 🆕
-        by = ball["body"].position.y                                       # 🆕
-        if by >= BASKET_CENTER[1]:                                         # 🆕
-            reset_ball()                                                   # 🆕
-    elif missed:                                                           # 🆕
-        bx, by = ball["body"].position                                     # 🆕
-        if by > HEIGHT + 50 or bx < -50 or bx > WIDTH + 50:               # 🆕
-            reset_ball()                                                   # 🆕
-    else:                                                                  # 🆕
-        bx, by = ball["body"].position                                     # 🆕
-        if by > HEIGHT + 50:                                               # 🆕
-            reset_ball()                                                   # 🆕
-
-    # --- Disegno ---
-    draw_basket(screen, BASKET_CENTER, BASKET_RADIUS, COLORS, rotation_angle)
-    pos = ball["body"].position
-    pygame.draw.circle(screen, ball["color"],
-                       (int(pos.x), int(pos.y)), BALL_RADIUS)
-
-    space.step(1 / FPS)
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-sys.exit()
-```
-
-</details>
-
----
-
-## Codice completo finale
-
-Ecco il programma completo assemblato, con tutti i blocchi:
 
 ```python
 import pygame
@@ -741,7 +113,6 @@ import math
 WIDTH, HEIGHT = 600, 700
 FPS = 60
 
-# Colori del gioco
 RED    = (220, 50, 50)
 GREEN  = (50, 200, 50)
 BLUE   = (50, 100, 220)
@@ -750,14 +121,204 @@ DARK_BG = (30, 30, 50)
 
 COLORS = [RED, GREEN, BLUE, YELLOW]
 
-# Canestro
-BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
-BASKET_RADIUS = 29  # proporzionato alla pallina come NBA (rim/ball ≈ 1.9)
-
-# Pallina
 BALL_RADIUS = 15
 BALL_START_Y = 50
-ROTATION_SPEED = math.pi / 20  # rad/frame – 90° in ~0.17 s
+
+BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
+BASKET_RADIUS = BALL_RADIUS * 1.9
+BASKET_ROTATION_STEP = math.pi / 20
+
+COLLISION_TYPE_BALL = 1
+COLLISION_TYPE_BASKET = 2
+
+# ============================================================
+# INIZIALIZZAZIONE
+# ============================================================
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Color Basket")
+clock = pygame.time.Clock()
+
+# ============================================================
+# GAME LOOP
+# ============================================================
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    screen.fill(DARK_BG)
+    pygame.display.flip()
+    clock.tick(FPS)
+
+pygame.quit()
+sys.exit()
+```
+
+</details>
+
+---
+
+## Blocco 2 - Spazio fisico e gravità
+
+### Obiettivo
+
+Aggiungere lo spazio fisico Pymunk con la gravità, come fatto nella Lezione 02.
+
+### Ingredienti (v. Lezione 02)
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `pymunk.Space()` | Crea lo spazio fisico |
+| `space.gravity = (x, y)` | Imposta la gravità. Un valore positivo in y spinge verso il basso |
+
+### Come combinarli
+
+1. Dopo l'inizializzazione di Pygame, crea lo spazio fisico con `pymunk.Space()` e salvalo in `space`
+2. Imposta la gravità: `space.gravity = (0, 500)`
+3. Nel game loop, aggiungi `space.step(1 / FPS)` per far avanzare la simulazione (v. Lezione 02)
+
+### Esercizio
+
+Partendo dal codice del Blocco 1, aggiungi lo spazio fisico e la gravità.
+
+Esegui il programma. Non vedrai nulla di diverso: lo spazio fisico è pronto ma vuoto. Lo riempiremo nei prossimi blocchi!
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+import pygame
+import pymunk
+import sys
+import random
+import math
+
+# ============================================================
+# COSTANTI
+# ============================================================
+WIDTH, HEIGHT = 600, 700
+FPS = 60
+
+RED    = (220, 50, 50)
+GREEN  = (50, 200, 50)
+BLUE   = (50, 100, 220)
+YELLOW = (240, 220, 50)
+DARK_BG = (30, 30, 50)
+
+COLORS = [RED, GREEN, BLUE, YELLOW]
+
+BALL_RADIUS = 15
+BALL_START_Y = 50
+
+BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
+BASKET_RADIUS = BALL_RADIUS * 1.9
+BASKET_ROTATION_STEP = math.pi / 20
+
+COLLISION_TYPE_BALL = 1
+COLLISION_TYPE_BASKET = 2
+
+# ============================================================
+# INIZIALIZZAZIONE
+# ============================================================
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Color Basket")
+clock = pygame.time.Clock()
+
+# Spazio fisico
+space = pymunk.Space()                                # 🆕
+space.gravity = (0, 500)                              # 🆕
+
+# ============================================================
+# GAME LOOP
+# ============================================================
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    screen.fill(DARK_BG)
+
+    # Aggiorno la fisica
+    space.step(1 / FPS)                               # 🆕
+
+    pygame.display.flip()
+    clock.tick(FPS)
+
+pygame.quit()
+sys.exit()
+```
+
+</details>
+
+---
+
+## Blocco 3 - Creare la palla: Surface trasparente e colore casuale
+
+### Obiettivo
+
+Creare l'aspetto grafico della palla: un cerchio colorato su una **Surface trasparente**. In Lezione 02 usavamo `debug_draw` per disegnare automaticamente gli oggetti Pymunk. Ora disegniamo noi, in modo da avere il pieno controllo su colori e aspetto.
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `pygame.Surface((larghezza, altezza), pygame.SRCALPHA)` | Crea una superficie con sfondo **trasparente**. È come un foglio lucido su cui disegniamo. |
+| `pygame.draw.circle(surface, colore, centro, raggio)` | Disegna un cerchio su una surface (v. Lezione 01, ma ora su una surface dedicata e non sullo schermo) |
+| `random.choice(lista)` | Sceglie un elemento casuale da una lista |
+
+### Come combinarli
+
+Creiamo una funzione `create_ball()` che per ora si occupa solo dell'aspetto grafico (la fisica la aggiungeremo nel blocco successivo):
+
+1. Calcola `size = BALL_RADIUS * 2` e `center = (size//2, size//2)`
+2. Crea una Surface quadrata di dimensione `size x size` con `pygame.SRCALPHA` per la trasparenza
+3. Scegli un colore casuale dalla lista `COLORS` con `random.choice(COLORS)`
+4. Disegna un cerchio pieno sulla surface con `pygame.draw.circle()`
+5. Restituisci un dizionario con le informazioni della palla: `{"surface": ball_surface, "color": color}`
+
+### Esercizio
+
+Crea la funzione `create_ball()` come descritto sopra e chiamala per creare la prima palla: `ball = create_ball()`.
+
+Esegui il programma. Non vedrai ancora la palla: l'abbiamo creata ma non disegnata sullo schermo. Lo faremo nel Blocco 5!
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+import pygame
+import pymunk
+import sys
+import random
+import math
+
+# ============================================================
+# COSTANTI
+# ============================================================
+WIDTH, HEIGHT = 600, 700
+FPS = 60
+
+RED    = (220, 50, 50)
+GREEN  = (50, 200, 50)
+BLUE   = (50, 100, 220)
+YELLOW = (240, 220, 50)
+DARK_BG = (30, 30, 50)
+
+COLORS = [RED, GREEN, BLUE, YELLOW]
+
+BALL_RADIUS = 15
+BALL_START_Y = 50
+
+BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
+BASKET_RADIUS = BALL_RADIUS * 1.9
+BASKET_ROTATION_STEP = math.pi / 20
+
+COLLISION_TYPE_BALL = 1
+COLLISION_TYPE_BASKET = 2
 
 # ============================================================
 # INIZIALIZZAZIONE
@@ -769,101 +330,28 @@ clock = pygame.time.Clock()
 
 # Spazio fisico
 space = pymunk.Space()
-space.gravity = (0, 400)
+space.gravity = (0, 500)
 
 # ============================================================
-# FUNZIONI DI DISEGNO
+# Creazione e disegno degli oggetti
 # ============================================================
-def draw_basket(surface, center, radius, colors, rotation_angle):
-    """Disegna il canestro con 4 spicchi colorati (spicchio centrato in alto)."""
-    cx, cy = center
-    rect = pygame.Rect(cx - radius, cy - radius, radius * 2, radius * 2)
 
-    for i in range(4):
-        start_angle = i * math.pi / 2 + math.pi / 4 + rotation_angle
-        end_angle = (i + 1) * math.pi / 2 + math.pi / 4 + rotation_angle
-        pygame.draw.arc(surface, colors[i],
-                        rect, start_angle, end_angle, 8)
+# Palla
+def create_ball():                                                # 🆕
+    """Crea una pallina con colore casuale che cade dall'alto."""  # 🆕
+    # DISEGNO                                                     # 🆕
+    # Creo la superficie di disegno dell'oggetto                  # 🆕
+    size = BALL_RADIUS * 2                                        # 🆕
+    center = (size//2, size//2)                                   # 🆕
+    ball_surface = pygame.Surface((size,size), pygame.SRCALPHA)   # 🆕
+    # Disegno la palla con un colore random                       # 🆕
+    color = random.choice(COLORS)                                 # 🆕
+    pygame.draw.circle(ball_surface, color, center, BALL_RADIUS)  # 🆕
+                                                                  # 🆕
+    return {"surface": ball_surface, "color": color}              # 🆕
 
-    # Interno del canestro
-    pygame.draw.circle(surface, DARK_BG, center, radius - 8)
-
-# ============================================================
-# FUNZIONI DI GIOCO
-# ============================================================
-def create_ball():
-    """Crea una pallina con colore casuale che cade dall'alto."""
-    color = random.choice(COLORS)
-    x = BASKET_CENTER[0]
-    mass = 1
-    moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)
-    body = pymunk.Body(mass, moment)
-    body.position = (x, BALL_START_Y)
-    shape = pymunk.Circle(body, BALL_RADIUS)
-    shape.elasticity = 0.7
-    shape.friction = 0.5
-    shape.collision_type = 1
-    space.add(body, shape)
-    return {"body": body, "shape": shape, "color": color}
-
-
-def remove_ball(ball):
-    """Rimuove la pallina dallo spazio fisico."""
-    space.remove(ball["shape"], ball["body"])
-
-
-def reset_ball():
-    """Rimuove la pallina corrente e ne crea una nuova."""
-    global ball, caught, missed
-    remove_ball(ball)
-    ball = create_ball()
-    caught = False
-    missed = False
-
-# ============================================================
-# CANESTRO FISICO
-# ============================================================
-basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
-basket_body.position = BASKET_CENTER
-
-# Sensore unico per rilevare la collisione con la pallina
-basket_sensor = pymunk.Circle(basket_body, BASKET_RADIUS)
-basket_sensor.sensor = True
-basket_sensor.collision_type = 2
-
-space.add(basket_body, basket_sensor)
-
-# ============================================================
-# COLLISION HANDLER
-# ============================================================
-caught = False
-missed = False
-rotation_angle = 0.0
-target_rotation_angle = 0.0
-basket_top_index = 0  # indice del colore in alto nel canestro
-basket_top_color = COLORS[basket_top_index]
-
-def on_ball_enter_basket(arbiter, space, data):
-    """Callback: la pallina ha toccato il sensore del canestro."""
-    global caught, missed
-    if caught or missed:
-        return True
-    if ball["color"] == basket_top_color:
-        caught = True
-        ball["body"].velocity = (0, 80)   # rallenta la pallina
-    else:
-        missed = True
-        # Rimbalza la pallina lateralmente
-        direction = random.choice([-1, 1])
-        ball["body"].velocity = (direction * 300, -350)
-    return False
-
-space.on_collision(1, 2, begin=on_ball_enter_basket)
-
-# ============================================================
-# CREA LA PRIMA PALLINA
-# ============================================================
-ball = create_ball()
+# Crea la prima palla
+ball = create_ball()                                              # 🆕
 
 # ============================================================
 # GAME LOOP
@@ -873,52 +361,12 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                target_rotation_angle += math.pi / 2
-                basket_top_index = (basket_top_index - 1) % 4
-                basket_top_color = COLORS[basket_top_index]
-            elif event.key == pygame.K_RIGHT:
-                target_rotation_angle -= math.pi / 2
-                basket_top_index = (basket_top_index + 1) % 4
-                basket_top_color = COLORS[basket_top_index]
 
     screen.fill(DARK_BG)
 
-    # --- Rotazione smooth a velocità costante ---
-    if rotation_angle != target_rotation_angle:
-        diff = target_rotation_angle - rotation_angle
-        if abs(diff) <= ROTATION_SPEED:
-            rotation_angle = target_rotation_angle
-        elif diff > 0:
-            rotation_angle += ROTATION_SPEED
-        else:
-            rotation_angle -= ROTATION_SPEED
-
-    # --- Logica di gioco ---
-    if caught:
-        # La pallina continua a cadere; quando supera il centro del canestro, reset
-        by = ball["body"].position.y
-        if by >= BASKET_CENTER[1]:
-            reset_ball()
-    elif missed:
-        # Aspetta che la pallina esca dallo schermo, poi crea una nuova
-        bx, by = ball["body"].position
-        if by > HEIGHT + 50 or bx < -50 or bx > WIDTH + 50:
-            reset_ball()
-    else:
-        # Pallina uscita dallo schermo senza toccare il canestro
-        bx, by = ball["body"].position
-        if by > HEIGHT + 50:
-            reset_ball()
-
-    # --- Disegno ---
-    draw_basket(screen, BASKET_CENTER, BASKET_RADIUS, COLORS, rotation_angle)
-    pos = ball["body"].position
-    pygame.draw.circle(screen, ball["color"],
-                       (int(pos.x), int(pos.y)), BALL_RADIUS)
-
+    # Aggiorno la fisica
     space.step(1 / FPS)
+
     pygame.display.flip()
     clock.tick(FPS)
 
@@ -926,58 +374,1049 @@ pygame.quit()
 sys.exit()
 ```
 
+</details>
+
+---
+
+## Blocco 4 - Dare fisicità alla palla: body dinamico e shape
+
+### Obiettivo
+
+Aggiungere il **body** e la **shape** alla palla, in modo che Pymunk ne gestisca il movimento e le collisioni (v. Lezione 02).
+
+### Ingredienti (v. Lezione 02)
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `pymunk.moment_for_circle(mass, inner, outer)` | Calcola il momento d'inerzia per un cerchio |
+| `pymunk.Body(mass, moment)` | Crea un body dinamico (soggetto a gravità) |
+| `body.position = (x, y)` | Imposta la posizione iniziale |
+| `pymunk.Circle(body, radius)` | Crea una shape circolare associata al body |
+| `shape.elasticity` | Quanto rimbalza (0 = niente, 1 = perfetto) |
+| `shape.friction` | Quanto attrito ha |
+| `shape.collision_type` | Un intero che identifica il "tipo" dell'oggetto per le collisioni |
+| `space.add(body, shape)` | Aggiunge body e shape allo spazio fisico |
+
+### Come combinarli
+
+Aggiungiamo la parte fisica alla funzione `create_ball()`:
+
+1. Dopo il disegno, crea il body:
+   - `mass = 1`
+   - Calcola il momento con `pymunk.moment_for_circle(mass, 0, BALL_RADIUS)`
+   - Crea il body con `pymunk.Body(mass, moment)`
+   - Imposta la posizione: `body.position = (BASKET_CENTER[0], BALL_START_Y)` — la palla parte centrata sopra il canestro
+2. Crea la shape:
+   - `pymunk.Circle(body, BALL_RADIUS)`
+   - `shape.elasticity = 0.7`
+   - `shape.friction = 0.5`
+   - `shape.collision_type = COLLISION_TYPE_BALL` — identifica la palla per le collisioni future
+3. Aggiungi body e shape allo spazio con `space.add(body, shape)`
+4. Aggiungi `"body": ball_body` e `"shape": ball_shape` al dizionario restituito
+
+### Esercizio
+
+Modifica la funzione `create_ball()` aggiungendo body e shape come descritto.
+
+Esegui il programma. Ancora niente di visibile: la palla cade nello spazio fisico, ma non la stiamo ancora disegnando sullo schermo!
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+def create_ball():
+    """Crea una pallina con colore casuale che cade dall'alto."""
+    # DISEGNO
+    # Creo la superficie di disegno dell'oggetto
+    size = BALL_RADIUS * 2
+    center = (size//2, size//2)
+    ball_surface = pygame.Surface((size,size), pygame.SRCALPHA)
+    # Disegno la palla con un colore random
+    color = random.choice(COLORS)
+    pygame.draw.circle(ball_surface, color, center, BALL_RADIUS)
+
+    # BODY                                                                    # 🆕
+    # Definiamo il Body della palla (oggetto fisico)                          # 🆕
+    mass = 1                                                                  # 🆕
+    moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)                   # 🆕
+    ball_body = pymunk.Body(mass, moment)                                     # 🆕
+    ball_body.position = (BASKET_CENTER[0], BALL_START_Y)                     # 🆕
+                                                                              # 🆕
+    # SHAPE                                                                   # 🆕
+    # Definiamo la forma fisica                                               # 🆕
+    ball_shape = pymunk.Circle(ball_body, BALL_RADIUS)                        # 🆕
+    ball_shape.elasticity = 0.7                                               # 🆕
+    ball_shape.friction = 0.5                                                 # 🆕
+    ball_shape.collision_type = COLLISION_TYPE_BALL                            # 🆕
+                                                                              # 🆕
+    # Aggiungo la palla allo spazio fisico                                    # 🆕
+    space.add(ball_body, ball_shape)                                          # 🆕
+
+    return {"body": ball_body, "shape": ball_shape, "surface": ball_surface, "color": color}  # 🆕
+```
+
+</details>
+
+---
+
+## Blocco 5 - Disegnare la palla con `blit`
+
+### Obiettivo
+
+Rendere finalmente visibile la palla! Impariamo a usare `blit` per disegnare una Surface sullo schermo, nella posizione gestita da Pymunk.
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `surface.get_rect(center=posizione)` | Crea un rettangolo di riferimento centrato sulla posizione data. Serve per posizionare la surface. |
+| `screen.blit(surface, rect)` | **Disegna** (incolla) una surface sullo schermo nella posizione del rettangolo |
+
+### Come combinarli
+
+Creiamo una funzione `draw_ball(screen, ball)`:
+
+1. Recupera il body e la surface dal dizionario `ball`
+2. Calcola il rettangolo di posizionamento: `rect_new = ball_surface.get_rect(center=ball_body.position)`
+   - `ball_body.position` è aggiornata da Pymunk ad ogni `space.step()`
+   - `get_rect(center=...)` crea un riquadro centrato su quel punto
+3. Disegna la surface sullo schermo: `screen.blit(ball_surface, rect_new)`
+4. Nel game loop, dopo `screen.fill()`, chiama `draw_ball(screen, ball)`
+
+### Esercizio
+
+Crea la funzione `draw_ball()` e chiamala nel game loop.
+
+Esegui il programma. Finalmente! La palla colorata cade e... scompare fuori dallo schermo. Non c'è ancora nulla su cui rimbalzare!
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+def draw_ball( screen, ball):                                     # 🆕
+    ball_body = ball["body"]                                      # 🆕
+    ball_surface = ball["surface"]                                # 🆕
+    # Calcolo il nuovo riquadro da disegnare                      # 🆕
+    rect_new = ball_surface.get_rect(center=ball_body.position)   # 🆕
+    # Scrivo la surface nel nuovo riquadro                        # 🆕
+    screen.blit(ball_surface, rect_new)                           # 🆕
+```
+
+E nel game loop:
+
+```python
+    screen.fill(DARK_BG)
+
+    # Aggiorno la fisica
+    space.step(1 / FPS)
+
+    # --- Disegno gli oggetti ---
+    draw_ball(screen, ball)                                       # 🆕
+
+    pygame.display.flip()
+    clock.tick(FPS)
+```
+
+</details>
+
+---
+
+## Blocco 6 - Creare il canestro: archi colorati con `arc`
+
+### Obiettivo
+
+Creare l'aspetto grafico del canestro: un cerchio formato da 4 archi colorati, con l'interno scuro. Ogni arco copre 90° (un quarto di cerchio).
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `pygame.draw.arc(surface, colore, rect, angolo_inizio, angolo_fine, spessore)` | Disegna un arco di cerchio. Gli angoli sono in **radianti**. L'angolo 0 è a destra (ore 3) e cresce in **senso antiorario**. |
+| `math.pi` | Il valore di π (≈ 3.14159). Un giro completo = 2π. Un quarto di giro = π/2. |
+| `surface.get_rect()` | Restituisce il rettangolo che contiene la surface. Serve come area di disegno per `arc`. |
+
+### Come combinarli
+
+Creiamo una funzione `create_basket()` — per ora solo la parte grafica:
+
+1. Calcola `size = BASKET_RADIUS * 2` e `center = (size//2, size//2)`
+2. Crea una Surface quadrata con `pygame.SRCALPHA` (sfondo trasparente)
+3. Disegna i 4 archi colorati con un ciclo `for`:
+   - Ogni arco copre `angle_step = math.pi / 2` (90°)
+   - L'angolo di partenza è `angle_start = math.pi / 4` (45°), così il primo colore è in alto
+   - Per ogni colore: disegna l'arco con `pygame.draw.arc()`, spessore 8
+   - Dopo ogni arco: sposta `angle_start` e `angle_stop` avanti di 90°
+4. Disegna l'interno del canestro con `pygame.draw.circle()` in colore `DARK_BG` e raggio `BASKET_RADIUS - 8`
+5. Restituisci un dizionario: `{"surface": basket_surface}`
+
+### Esercizio
+
+Crea la funzione `create_basket()` e chiamala: `basket = create_basket()`.
+
+Esegui il programma. Non vedrai ancora il canestro: lo disegneremo sullo schermo nel Blocco 8.
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+# Canestro
+def create_basket():                                                                      # 🆕
+    # DISEGNO                                                                             # 🆕
+    # Creo la superficie di disegno dell'oggetto                                          # 🆕
+    size = BASKET_RADIUS * 2                                                              # 🆕
+    center = (size//2, size//2)                                                           # 🆕
+    basket_surface = pygame.Surface((size,size), pygame.SRCALPHA)                         # 🆕
+    # Disegna il canestro con i 4 colori, il primo colore in alto                         # 🆕
+    #L'angolo 0 è alle ore 15:00 e cresce in senso antiorario                            # 🆕
+    angle_step = math.pi/2                                                                # 🆕
+    angle_start = math.pi/4                                                               # 🆕
+    angle_stop  = angle_start + angle_step                                                # 🆕
+    for i in range(4):                                                                    # 🆕
+        pygame.draw.arc(basket_surface, COLORS[i], basket_surface.get_rect(), angle_start, angle_stop, 8 )  # 🆕
+        angle_start = angle_stop                                                          # 🆕
+        angle_stop += angle_step                                                          # 🆕
+    # Interno del canestro                                                                # 🆕
+    pygame.draw.circle(basket_surface, DARK_BG, center, BASKET_RADIUS - 8)                # 🆕
+                                                                                          # 🆕
+    return {"surface": basket_surface}                                                    # 🆕
+```
+
+E subito prima della creazione della palla:
+
+```python
+# Crea il canestro
+basket = create_basket()                                                                  # 🆕
+# Crea la prima palla
+ball = create_ball()
+```
+
+</details>
+
+---
+
+## Blocco 7 - Dare fisicità al canestro: body KINEMATIC e sensore
+
+### Obiettivo
+
+Aggiungere un body e una shape al canestro. A differenza della palla, il canestro:
+- Non deve cadere → useremo un body **KINEMATIC** (controllabile dal codice, non soggetto a gravità)
+- Non deve bloccare fisicamente la palla → la sua shape sarà un **sensore** (rileva le collisioni senza generare reazioni fisiche)
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `pymunk.Body(body_type=pymunk.Body.KINEMATIC)` | Crea un body **cinematico**: non è soggetto a gravità né a forze, ma può essere mosso dal codice (posizione, rotazione, velocità). |
+| `shape.sensor = True` | Trasforma la shape in un **sensore**: rileva le collisioni (chiama i callback) ma non genera reazioni fisiche (non blocca, non fa rimbalzare). |
+| `shape.collision_type = intero` | Assegna un "tipo" alla shape per identificarla nelle collisioni |
+
+### Come combinarli
+
+Aggiungiamo la parte fisica alla funzione `create_basket()`:
+
+1. Crea il body cinematico: `pymunk.Body(body_type=pymunk.Body.KINEMATIC)`
+2. Imposta la posizione: `basket_body.position = BASKET_CENTER`
+3. Crea la shape circolare: `pymunk.Circle(basket_body, BASKET_RADIUS)`
+4. Imposta la shape come sensore: `basket_shape.sensor = True`
+5. Assegna il tipo di collisione: `basket_shape.collision_type = COLLISION_TYPE_BASKET`
+6. Aggiungi body e shape allo spazio: `space.add(basket_body, basket_shape)`
+7. Aggiungi `"body"` e `"shape"` al dizionario restituito
+
+### Esercizio
+
+Modifica la funzione `create_basket()` aggiungendo body KINEMATIC e shape sensore.
+
+Esegui il programma. Ancora nessuna differenza visiva: il canestro esiste nello spazio fisico ma non lo stiamo disegnando. Prossimo blocco!
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+def create_basket():
+    # DISEGNO
+    # Creo la superficie di disegno dell'oggetto
+    size = BASKET_RADIUS * 2
+    center = (size//2, size//2)
+    basket_surface = pygame.Surface((size,size), pygame.SRCALPHA) # sfondo trasparente
+    # Disegna il canestro con i 4 colori, il primo colore in alto
+    #L'angolo 0 è alle ore 15:00 e cresce in senso antiorario
+    angle_step = math.pi/2 # 90 gradi
+    angle_start = math.pi/4 # Parto da 45 gradi
+    angle_stop  = angle_start + angle_step
+    for i in range(4):
+        pygame.draw.arc(basket_surface, COLORS[i], basket_surface.get_rect(), angle_start, angle_stop, 8 )
+        angle_start = angle_stop
+        angle_stop += angle_step
+    # Interno del canestro
+    pygame.draw.circle(basket_surface, DARK_BG, center, BASKET_RADIUS - 8)
+
+    # BODY                                                                    # 🆕
+    # Definiamo il Body del canestro (oggetto fisico)                         # 🆕
+    # KINEMATIC: non soggetto alla gravità                                    # 🆕
+    basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)                # 🆕
+    basket_body.position = BASKET_CENTER                                      # 🆕
+                                                                              # 🆕
+    # SHAPE                                                                   # 🆕
+    # Definiamo la forma fisica                                               # 🆕
+    # La impostiamo come sensore per rilevare la collisione con la pallina    # 🆕
+    basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)                  # 🆕
+    basket_shape.sensor = True                                                # 🆕
+    basket_shape.collision_type = COLLISION_TYPE_BASKET                        # 🆕
+                                                                              # 🆕
+    # Aggiungo il canestro allo spazio fisico                                 # 🆕
+    space.add(basket_body, basket_shape)                                      # 🆕
+
+    return {"body": basket_body, "shape": basket_shape, "surface": basket_surface}  # 🆕
+```
+
+</details>
+
+---
+
+## Blocco 8 - Disegnare il canestro con rotazione
+
+### Obiettivo
+
+Disegnare il canestro sullo schermo. Poiché il canestro ruoterà, dobbiamo ruotare la surface grafica in base all'angolo fisico del body.
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `math.degrees(radianti)` | Converte un angolo da radianti a gradi (Pygame usa i gradi per le rotazioni grafiche) |
+| `pygame.transform.rotate(surface, angolo_gradi)` | Restituisce una **nuova** surface ruotata dell'angolo specificato. L'originale non viene modificata. |
+| `surface.get_rect(center=posizione)` | Calcola il rettangolo centrato sulla posizione (già visto nel Blocco 5) |
+| `screen.blit(surface, rect)` | Disegna la surface sullo schermo (già visto nel Blocco 5) |
+| `body.angle` | L'angolo corrente del body in **radianti**, aggiornato da Pymunk |
+
+### Come combinarli
+
+Creiamo una funzione `draw_basket(screen, basket)`:
+
+1. Recupera body e surface dal dizionario `basket`
+2. Converti l'angolo del body in gradi: `angle_deg = math.degrees(basket_body.angle)`
+3. Ruota la surface: `surface_rotated = pygame.transform.rotate(basket_surface, angle_deg)`
+4. Calcola il rettangolo centrato sulla posizione del body: `rect_new = surface_rotated.get_rect(center=basket_body.position)`
+5. Disegna sullo schermo: `screen.blit(surface_rotated, rect_new)`
+6. Nel game loop, chiama `draw_basket(screen, basket)` prima di `draw_ball(screen, ball)`
+
+### Esercizio
+
+Crea la funzione `draw_basket()` e chiamala nel game loop.
+
+Esegui il programma. Ora vedi il canestro con i 4 colori e la palla che cade! La palla attraversa il canestro perché la shape del canestro è un sensore (non blocca nulla). Per ora è esattamente quello che vogliamo.
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+```python
+def draw_basket(screen, basket):                                                          # 🆕
+    """Ruota la superficie pre-disegnata in base all'angolo del body e la disegna."""      # 🆕
+    basket_body = basket["body"]                                                          # 🆕
+    basket_surface = basket["surface"]                                                    # 🆕
+    # Ridisegno il canestro, considerando la rotazione corrente di basket_body             # 🆕
+    angle_deg = math.degrees(basket_body.angle) # da radianti a gradi                     # 🆕
+    surface_rotated = pygame.transform.rotate(basket_surface, angle_deg)                  # 🆕
+    # Calcolo il nuovo riquadro da disegnare                                              # 🆕
+    rect_new = surface_rotated.get_rect(center=basket_body.position)                      # 🆕
+    # Scrivo la surface ridisegnata nel nuovo riquadro                                    # 🆕
+    screen.blit(surface_rotated, rect_new)                                                # 🆕
+```
+
+E nel game loop:
+
+```python
+    # --- Disegno gli oggetti ---
+    draw_basket(screen, basket)                                   # 🆕
+    draw_ball(screen, ball)
+```
+
+</details>
+
+---
+
+## Blocco 9 - Ruotare il canestro con le frecce
+
+### Obiettivo
+
+Permettere al giocatore di ruotare il canestro di 90° premendo le frecce SX e DX. La rotazione deve essere **smooth** (fluida), non istantanea.
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `pygame.KEYDOWN` | Evento che scatta quando si **preme** un tasto (v. Lezione 01, dove usavamo `get_pressed()` per la pressione continua; qui ci basta il singolo evento) |
+| `event.key` | Il tasto premuto nell'evento `KEYDOWN` |
+| `pygame.K_LEFT` / `pygame.K_RIGHT` | Costanti per le frecce (v. Lezione 01) |
+| `body.angular_velocity` | Velocità angolare del body in radianti/secondo. Pymunk ruota il body automaticamente. |
+| `body.angle` | Angolo corrente del body in radianti |
+
+### Come combinarli
+
+Usiamo una tecnica di **rotazione smooth**: quando il giocatore preme un tasto, impostiamo una velocità angolare e un angolo di arrivo. Ad ogni frame, controlliamo se abbiamo raggiunto l'angolo target e in quel caso fermiamo la rotazione.
+
+1. Prima del game loop, crea le variabili di stato:
+   - `basket_body = basket["body"]` — riferimento al body del canestro
+   - `basket_top_color_index = 0` — indice del colore attualmente in alto (inizia da `COLORS[0]`)
+   - `target_rotation_angle = 0.0` — angolo target a cui il canestro deve arrivare
+2. Nel ciclo degli eventi, intercetta `pygame.KEYDOWN`:
+   - **Freccia SX**: rotazione antioraria
+     - `target_rotation_angle += math.pi / 2` (aggiungi 90°)
+     - `basket_body.angular_velocity = BASKET_ROTATION_STEP * FPS` (velocità positiva)
+     - `basket_top_color_index = (basket_top_color_index - 1) % 4` (colore precedente nella lista)
+   - **Freccia DX**: rotazione oraria
+     - `target_rotation_angle -= math.pi / 2` (togli 90°)
+     - `basket_body.angular_velocity = -BASKET_ROTATION_STEP * FPS` (velocità negativa)
+     - `basket_top_color_index = (basket_top_color_index + 1) % 4` (colore successivo nella lista)
+3. Nel game loop, dopo `space.step()`, aggiungi il controllo di arrivo:
+   - Calcola `diff = target_rotation_angle - basket_body.angle`
+   - Se `abs(diff) <= BASKET_ROTATION_STEP`: il canestro è arrivato! Imposta `basket_body.angle = target_rotation_angle` e `basket_body.angular_velocity = 0`
+
+### Esercizio
+
+Aggiungi la gestione dei tasti e la rotazione smooth al game loop.
+
+Esegui il programma. Premi le frecce SX e DX: il canestro ruota in modo fluido di 90° alla volta! La palla continua ad attraversarlo (è ancora un sensore).
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+Prima del game loop:
+
+```python
+# Crea il canestro
+basket = create_basket()
+# Crea la prima palla
+ball = create_ball()
+
+# ============================================================
+# GAME LOOP
+# ============================================================
+basket_body = basket["body"]                          # 🆕
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:                                      # 🆕
+            if event.key == pygame.K_LEFT:                                    # 🆕
+                target_rotation_angle += math.pi / 2                          # 🆕
+                basket_body.angular_velocity = BASKET_ROTATION_STEP * FPS     # 🆕
+                basket_top_color_index = (basket_top_color_index - 1) % 4     # 🆕
+            elif event.key == pygame.K_RIGHT:                                 # 🆕
+                target_rotation_angle -= math.pi / 2                          # 🆕
+                basket_body.angular_velocity = -BASKET_ROTATION_STEP * FPS    # 🆕
+                basket_top_color_index = (basket_top_color_index + 1) % 4     # 🆕
+
+    screen.fill(DARK_BG)
+
+    # Aggiorno la fisica
+    space.step(1 / FPS)
+
+    # --- Rotazione smooth via pymunk ---
+    if basket_body.angular_velocity != 0:                                     # 🆕
+        diff = target_rotation_angle - basket_body.angle                      # 🆕
+        if abs(diff) <= BASKET_ROTATION_STEP:                                 # 🆕
+            basket_body.angle = target_rotation_angle                         # 🆕
+            basket_body.angular_velocity = 0                                  # 🆕
+
+    # --- Disegno gli oggetti ---
+    draw_basket(screen, basket)
+    draw_ball(screen, ball)
+
+    pygame.display.flip()
+    clock.tick(FPS)
+```
+
+**Nota:** `basket_top_color_index` e `target_rotation_angle` non sono ancora definiti qui perché li introdurremo nel prossimo blocco insieme al collision handler. Per ora, aggiungili temporaneamente prima del game loop:
+
+```python
+basket_top_color_index = 0
+target_rotation_angle = 0.0
+```
+
+</details>
+
+---
+
+## Blocco 10 - Gestire le collisioni
+
+### Obiettivo
+
+Quando la palla tocca il canestro, vogliamo sapere se il colore corrisponde. Se sì, la palla "entra" nel canestro (rallenta). Se no, la palla "rimbalza via" (viene sparata di lato).
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `space.on_collision(type_a, type_b, begin=callback)` | Registra una funzione **callback** che viene chiamata quando due shape con i `collision_type` specificati si toccano |
+| `def callback(arbiter, space, data)` | La firma della funzione callback. `arbiter` contiene info sulla collisione. |
+| `body.velocity = (vx, vy)` | Imposta direttamente la velocità di un body |
+| `random.choice([-1, 1])` | Sceglie casualmente una direzione (sinistra o destra) |
+| `random.randint(a, b)` | Sceglie un intero casuale tra a e b |
+
+### Come combinarli
+
+1. Crea due variabili globali: `caught = False` e `missed = False`
+2. Sposta `basket_top_color_index = 0` e `target_rotation_angle = 0.0` qui — ora servono anche al callback
+3. Crea la funzione callback `on_ball_enter_basket(arbiter, space, data)`:
+   - Recupera il colore in alto al canestro: `basket_top_color = COLORS[basket_top_color_index]`
+   - Usa `global caught, missed` per accedere alle variabili globali
+   - Se `caught` o `missed` sono già `True`, la collisione è già stata gestita: ritorna `True` (ignora)
+   - Se il colore della palla corrisponde al colore del canestro:
+     - `caught = True`
+     - Rallenta la palla: `ball["body"].velocity = (0, 80)`
+   - Altrimenti:
+     - `missed = True`
+     - Fai rimbalzare la palla lateralmente: scegli una direzione casuale e imposta una velocità orizzontale di `direction * 600` e verticale casuale tra -350 e -150
+   - Ritorna `False`
+4. Registra il callback: `space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET, begin=on_ball_enter_basket)`
+5. Posiziona tutto **prima** della creazione del canestro e della palla
+
+### Esercizio
+
+Aggiungi le variabili globali, la funzione callback e la registrazione del collision handler.
+
+Esegui il programma. Ora quando la palla tocca il canestro: se il colore corrisponde, la palla rallenta e scende; se non corrisponde, la palla viene sparata di lato! Però la palla non torna... lo risolviamo nel prossimo blocco.
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+Posiziona questa sezione **prima** della creazione di canestro e palla:
+
+```python
+# ============================================================
+# COLLISION HANDLER
+# ============================================================
+caught = False # La palla entra nel canestro                      # 🆕
+missed = False # La palla non entra nel canestro                  # 🆕
+basket_top_color_index = 0  # indice del colore in alto al canestro  # 🆕
+target_rotation_angle = 0.0 # angolo attuale del canestro         # 🆕
+
+
+def on_ball_enter_basket(arbiter, space, data):                   # 🆕
+    """Callback: la pallina ha toccato il sensore del canestro.""" # 🆕
+                                                                  # 🆕
+    # Colore del canestro                                         # 🆕
+    basket_top_color = COLORS[basket_top_color_index]             # 🆕
+                                                                  # 🆕
+    global caught, missed                                         # 🆕
+    if caught or missed:                                          # 🆕
+        return True                                               # 🆕
+                                                                  # 🆕
+    if ball["color"] == basket_top_color:                          # 🆕
+        caught = True                                             # 🆕
+        ball["body"].velocity = (0, 80)   # rallenta la pallina   # 🆕
+    else:                                                         # 🆕
+        missed = True                                             # 🆕
+        # Rimbalza la pallina lateralmente                        # 🆕
+        direction = random.choice([-1, 1])                        # 🆕
+        ball["body"].velocity = (direction * 600, random.randint(-350, -150))  # 🆕
+                                                                  # 🆕
+    return False                                                  # 🆕
+
+space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET,     # 🆕
+                   begin=on_ball_enter_basket)                     # 🆕
+
+
+# Crea il canestro
+basket = create_basket()
+# Crea la prima palla
+ball = create_ball()
+```
+
+**Nota:** Rimuovi le definizioni temporanee di `basket_top_color_index` e `target_rotation_angle` che avevi aggiunto nel Blocco 9 — ora sono qui.
+
+</details>
+
+---
+
+## Blocco 11 - Logica di gioco: caught, missed, reset
+
+### Obiettivo
+
+Completare il gioco: quando la palla entra nel canestro o rimbalza fuori schermo, creare automaticamente una nuova palla.
+
+### Ingredienti
+
+| Elemento | Descrizione |
+|----------|-------------|
+| `space.remove(shape, body)` | Rimuove un oggetto dallo spazio fisico |
+| `body.position.x`, `body.position.y` | Coordinate correnti del body |
+
+### Come combinarli
+
+1. Crea una funzione `reset_ball(ball)`:
+   - Usa `global caught, missed` per accedere alle variabili globali
+   - Resetta: `caught = False`, `missed = False`
+   - Rimuove la palla corrente dallo spazio fisico con `space.remove(ball["shape"], ball["body"])`
+   - Crea e restituisce una nuova palla con `create_ball()`
+2. Nel game loop, dopo la rotazione smooth, aggiungi la logica di gioco:
+   - Se `caught` è `True`: la palla sta entrando nel canestro. Quando la sua posizione y supera `BASKET_CENTER[1]` (il centro del canestro), fai il reset: `ball = reset_ball(ball)`
+   - Se `missed` è `True`: la palla è rimbalzata via. Quando esce dallo schermo (y > HEIGHT + 50, o x < -50, o x > WIDTH + 50), fai il reset
+   - Altrimenti (nessuna collisione): se la palla cade oltre HEIGHT + 50 senza toccare il canestro, fai il reset
+
+### Esercizio
+
+Crea la funzione `reset_ball()` e aggiungi la logica di gioco nel game loop.
+
+Esegui il programma. Il gioco è completo! Le palle cadono con colori casuali, puoi ruotare il canestro con le frecce e, colore giusto o sbagliato, una nuova palla appare ogni volta.
+
+<details>
+<summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
+
+La funzione `reset_ball()` va aggiunta tra le funzioni di creazione/disegno:
+
+```python
+def reset_ball(ball):                                             # 🆕
+    """Rimuove la pallina corrente e ne crea una nuova."""        # 🆕
+    global caught, missed                                         # 🆕
+    caught = False                                                # 🆕
+    missed = False                                                # 🆕
+                                                                  # 🆕
+    # Rimuove la palla dallo spazio fisico.                       # 🆕
+    space.remove(ball["shape"], ball["body"])                      # 🆕
+    # Ritorna la nuova palla                                      # 🆕
+    return create_ball()                                          # 🆕
+```
+
+E nel game loop, dopo la rotazione smooth:
+
+```python
+    # --- Logica di gioco ---
+    if caught:                                                    # 🆕
+        # La pallina continua a cadere; quando supera il centro del canestro, reset  # 🆕
+        by = ball["body"].position.y                              # 🆕
+        if by >= BASKET_CENTER[1]:                                # 🆕
+            ball = reset_ball(ball)                                # 🆕
+    elif missed:                                                  # 🆕
+        # Aspetta che la pallina esca dallo schermo, poi crea una nuova  # 🆕
+        bx, by = ball["body"].position                            # 🆕
+        if by > HEIGHT + 50 or bx < -50 or bx > WIDTH + 50:      # 🆕
+            ball = reset_ball(ball)                                # 🆕
+    else:                                                         # 🆕
+        # Pallina uscita dallo schermo senza toccare il canestro  # 🆕
+        bx, by = ball["body"].position                            # 🆕
+        if by > HEIGHT + 50:                                      # 🆕
+            ball = reset_ball(ball)                                # 🆕
+```
+
+</details>
+
+---
+
+## Codice completo finale
+
+Ecco il programma completo che abbiamo costruito passo dopo passo:
+
+<details>
+<summary>Apri per vedere il codice completo</summary>
+
+```python
+import pygame
+import pymunk
+import sys
+import random
+import math
+
+# ============================================================
+# COSTANTI
+# ============================================================
+# Dimensione dell'area di gioco e FPS
+WIDTH, HEIGHT = 600, 700
+FPS = 60
+
+# Colori usati per disegnare gli oggetti
+RED    = (220, 50, 50)
+GREEN  = (50, 200, 50)
+BLUE   = (50, 100, 220)
+YELLOW = (240, 220, 50)
+DARK_BG = (30, 30, 50)
+
+# I colori del canestro e della palla
+COLORS = [RED, GREEN, BLUE, YELLOW]
+
+# Palla
+BALL_RADIUS = 15
+BALL_START_Y = 50
+
+# Canestro
+BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
+BASKET_RADIUS = BALL_RADIUS * 1.9  # proporzionato alla pallina come NBA (rim/ball ≈ 1.9)
+BASKET_ROTATION_STEP = math.pi / 20  # rad/frame – Quanto deve ruotare per ogni frame
+
+# Gestione delle Collisioni
+COLLISION_TYPE_BALL = 1
+COLLISION_TYPE_BASKET = 2
+
+# ============================================================
+# INIZIALIZZAZIONE
+# ============================================================
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Color Basket")
+clock = pygame.time.Clock()
+
+# Spazio fisico
+space = pymunk.Space()
+space.gravity = (0, 500)
+
+# ============================================================
+# Creazione e disegno degli oggetti
+# ============================================================
+
+# Canestro
+def create_basket():
+    # DISEGNO
+    # Creo la superficie di disegno dell'oggetto
+    size = BASKET_RADIUS * 2
+    center = (size//2, size//2)
+    basket_surface = pygame.Surface((size,size), pygame.SRCALPHA) # sfondo trasparente
+    # Disegna il canestro con i 4 colori, il primo colore in alto
+    #L'angolo 0 è alle ore 15:00 e cresce in senso antiorario
+    angle_step = math.pi/2 # 90 gradi
+    angle_start = math.pi/4 # Parto da 45 gradi
+    angle_stop  = angle_start + angle_step
+    for i in range(4):
+        pygame.draw.arc(basket_surface, COLORS[i], basket_surface.get_rect(), angle_start, angle_stop, 8 )
+        angle_start = angle_stop
+        angle_stop += angle_step
+    # Interno del canestro
+    pygame.draw.circle(basket_surface, DARK_BG, center, BASKET_RADIUS - 8)
+
+    # BODY 
+    # Definiamo il Body del canestro (oggetto fisico)
+    # KINEMATIC: non soggetto alla gravità
+    basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC) 
+    basket_body.position = BASKET_CENTER
+
+    # SHAPE
+    # Definiamo la forma fisica
+    # La impostiamo come sensore per rilevare la collisione con la pallina
+    basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)
+    basket_shape.sensor = True
+    basket_shape.collision_type = COLLISION_TYPE_BASKET
+
+    # Aggiungo il canestro allo spazio fisico
+    space.add(basket_body, basket_shape)
+
+    return {"body": basket_body, "shape": basket_shape, "surface": basket_surface}
+
+
+def draw_basket(screen, basket):
+    """Ruota la superficie pre-disegnata in base all'angolo del body e la disegna."""
+    basket_body = basket["body"]
+    basket_surface = basket["surface"]
+    # Ridisegno il canestro, considerando la rotazione corrente di basket_body
+    angle_deg = math.degrees(basket_body.angle) # da radianti a gradi
+    surface_rotated = pygame.transform.rotate(basket_surface, angle_deg)
+    # Calcolo il nuovo riquadro da disegnare
+    rect_new = surface_rotated.get_rect(center=basket_body.position)
+    # Scrivo la surface ridisegnata nel nuovo riquadro
+    screen.blit(surface_rotated, rect_new)
+
+# Palla
+def create_ball():
+    """Crea una pallina con colore casuale che cade dall'alto."""
+    # DISEGNO
+    # Creo la superficie di disegno dell'oggetto
+    size = BALL_RADIUS * 2
+    center = (size//2, size//2)
+    ball_surface = pygame.Surface((size,size), pygame.SRCALPHA)
+    # Disegno la palla con un colore random
+    color = random.choice(COLORS)
+    pygame.draw.circle(ball_surface, color, center, BALL_RADIUS)
+
+    # BODY
+    # Definiamo il Body della palla (oggetto fisico)
+    mass = 1
+    moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)
+    ball_body = pymunk.Body(mass, moment)
+    ball_body.position = (BASKET_CENTER[0], BALL_START_Y)
+
+    # SHAPE
+    # Definiamo la forma fisica
+    ball_shape = pymunk.Circle(ball_body, BALL_RADIUS)
+    ball_shape.elasticity = 0.7
+    ball_shape.friction = 0.5
+    ball_shape.collision_type = COLLISION_TYPE_BALL
+
+    # Aggiungo la palla allo spazio fisico
+    space.add(ball_body, ball_shape)
+
+    return {"body": ball_body, "shape": ball_shape, "surface": ball_surface, "color": color}
+
+def draw_ball( screen, ball):
+    ball_body = ball["body"]
+    ball_surface = ball["surface"]
+    # Calcolo il nuovo riquadro da disegnare
+    rect_new = ball_surface.get_rect(center=ball_body.position)
+    # Scrivo la surface nel nuovo riquadro
+    screen.blit(ball_surface, rect_new)
+
+
+def reset_ball(ball):
+    """Rimuove la pallina corrente e ne crea una nuova."""
+    global caught, missed
+    caught = False
+    missed = False
+
+    # Rimuove la palla dallo spazio fisico.
+    space.remove(ball["shape"], ball["body"])
+    # Ritorna la nuova palla
+    return create_ball()
+
+
+# ============================================================
+# COLLISION HANDLER
+# ============================================================
+caught = False # La palla entra nel canestro
+missed = False # La palla non entra nel canestro
+basket_top_color_index = 0  # indice del colore in alto al canestro
+target_rotation_angle = 0.0 # angolo attuale del canestro
+
+
+def on_ball_enter_basket(arbiter, space, data):
+    """Callback: la pallina ha toccato il sensore del canestro."""
+    
+    # Colore del canestro
+    basket_top_color = COLORS[basket_top_color_index]
+
+    global caught, missed
+    if caught or missed:
+        return True
+    
+    if ball["color"] == basket_top_color:
+        caught = True
+        ball["body"].velocity = (0, 80)   # rallenta la pallina
+    else:
+        missed = True
+        # Rimbalza la pallina lateralmente
+        direction = random.choice([-1, 1])
+        ball["body"].velocity = (direction * 600, random.randint(-350, -150))
+
+    return False
+
+space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET, 
+                   begin=on_ball_enter_basket)
+
+
+# Crea il canestro
+basket = create_basket()
+# Crea la prima palla
+ball = create_ball()
+
+# ============================================================
+# GAME LOOP
+# ============================================================
+basket_body = basket["body"]
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                target_rotation_angle += math.pi / 2
+                basket_body.angular_velocity = BASKET_ROTATION_STEP * FPS
+                basket_top_color_index = (basket_top_color_index - 1) % 4
+            elif event.key == pygame.K_RIGHT:
+                target_rotation_angle -= math.pi / 2
+                basket_body.angular_velocity = -BASKET_ROTATION_STEP * FPS
+                basket_top_color_index = (basket_top_color_index + 1) % 4
+
+    screen.fill(DARK_BG)
+    
+    # Aggiorno la fisica
+    space.step(1 / FPS)
+
+    # --- Rotazione smooth via pymunk ---
+    if basket_body.angular_velocity != 0:
+        diff = target_rotation_angle - basket_body.angle
+        if abs(diff) <= BASKET_ROTATION_STEP:
+            basket_body.angle = target_rotation_angle
+            basket_body.angular_velocity = 0
+
+    # --- Logica di gioco ---
+    if caught:
+        # La pallina continua a cadere; quando supera il centro del canestro, reset
+        by = ball["body"].position.y
+        if by >= BASKET_CENTER[1]:
+            ball = reset_ball(ball)
+    elif missed:
+        # Aspetta che la pallina esca dallo schermo, poi crea una nuova
+        bx, by = ball["body"].position
+        if by > HEIGHT + 50 or bx < -50 or bx > WIDTH + 50:
+            ball = reset_ball(ball)
+    else:
+        # Pallina uscita dallo schermo senza toccare il canestro
+        bx, by = ball["body"].position
+        if by > HEIGHT + 50:
+            ball = reset_ball(ball)
+
+    # --- Disegno gli oggetti ---
+    draw_basket(screen, basket)
+    draw_ball(screen, ball)
+
+    pygame.display.flip()
+    clock.tick(FPS)
+
+pygame.quit()
+sys.exit()
+```
+
+</details>
+
 ---
 
 ## Esercizi extra
 
-Mettiti alla prova con queste modifiche!
+Prova a modificare il programma per aggiungere queste funzionalità:
 
-### 1. Punteggio e vite
-Aggiungi un punteggio che aumenta di 1 a ogni pallina catturata e 3 vite che diminuiscono quando sbagli. Mostra entrambi a schermo.
+### 1. Punteggio a schermo
+Aggiungi un contatore di palle catturate e mostralo in alto a sinistra.
 
 <details>
 <summary>Suggerimento</summary>
 
-Usa `pygame.font.SysFont(None, 36)` per creare un font. Con `font.render(f"Punti: {score}", True, WHITE)` crei il testo, con `screen.blit(testo, (x, y))` lo disegni. Aggiungi le variabili `score` e `lives` e aggiornale in `reset_ball()`.
+Usa `pygame.font.SysFont("Arial", 30)` per creare un font e `font.render(f"Score: {score}", True, (255,255,255))` per trasformarlo in una surface da disegnare con `blit`.
 
 </details>
 
-### 2. Game Over e Restart
-Quando le vite finiscono, mostra "GAME OVER" e permetti di ricominciare premendo R.
-
 <details>
-<summary>Suggerimento</summary>
+<summary>Soluzione</summary>
 
-Aggiungi una variabile `game_over = False`. Quando `lives <= 0`, impostala a `True` e mostra la schermata con `font_big.render("GAME OVER", True, RED)`. Nel ciclo eventi, gestisci `pygame.K_r` per resettare tutto.
+Aggiungi prima del game loop:
+
+```python
+font = pygame.font.SysFont("Arial", 30)
+score = 0
+```
+
+In `reset_ball()`, prima di resettare `caught`:
+
+```python
+global score
+if caught:
+    score += 1
+```
+
+Nel game loop, dopo aver disegnato palla e canestro:
+
+```python
+score_surface = font.render(f"Score: {score}", True, (255, 255, 255))
+screen.blit(score_surface, (10, 10))
+```
 
 </details>
 
-### 3. Difficoltà crescente
-Man mano che il punteggio sale, aumenta la gravità per far cadere le palline più velocemente.
+### 2. Velocità crescente
+Fai in modo che la gravità aumenti leggermente dopo ogni palla catturata, rendendo il gioco progressivamente più difficile.
 
 <details>
 <summary>Suggerimento</summary>
 
-Modifica `space.gravity` nel game loop in base allo score. Ad esempio: `space.gravity = (0, 400 + score * 20)`.
+Modifica `space.gravity` in `reset_ball()` quando `caught` è `True`.
 
 </details>
 
-### 4. Posizione casuale della pallina
-Fai cadere la pallina da posizioni X casuali, non sempre dal centro. Aumenta il range man mano che il punteggio cresce.
-
 <details>
-<summary>Suggerimento</summary>
+<summary>Soluzione</summary>
 
-Modifica `create_ball()` per usare un range dipendente dallo score: `x = BASKET_CENTER[0] + random.randint(-range, range)`.
+In `reset_ball()`:
+
+```python
+if caught:
+    gx, gy = space.gravity
+    space.gravity = (gx, gy + 20)  # la gravità aumenta ogni volta
+```
 
 </details>
 
-### 5. Bonus combo
-Se catturi 3 palline consecutive, guadagni una vita extra.
+### 3. Palle di dimensione variabile
+Fai in modo che ogni palla abbia un raggio casuale tra 10 e 25. Ricorda di aggiornare sia la surface che la shape!
 
 <details>
 <summary>Suggerimento</summary>
 
-Aggiungi una variabile `combo` che si incrementa ad ogni cattura e si resetta a 0 quando manchi. Quando raggiunge 3, aggiungi una vita.
+Usa `random.randint(10, 25)` per generare il raggio e usalo al posto di `BALL_RADIUS` nella funzione `create_ball()`.
+
+</details>
+
+<details>
+<summary>Soluzione</summary>
+
+Modifica `create_ball()`:
+
+```python
+def create_ball():
+    radius = random.randint(10, 25)  # raggio variabile
+    size = radius * 2
+    center = (size//2, size//2)
+    ball_surface = pygame.Surface((size,size), pygame.SRCALPHA)
+    color = random.choice(COLORS)
+    pygame.draw.circle(ball_surface, color, center, radius)
+
+    mass = 1
+    moment = pymunk.moment_for_circle(mass, 0, radius)
+    ball_body = pymunk.Body(mass, moment)
+    ball_body.position = (BASKET_CENTER[0], BALL_START_Y)
+
+    ball_shape = pymunk.Circle(ball_body, radius)
+    ball_shape.elasticity = 0.7
+    ball_shape.friction = 0.5
+    ball_shape.collision_type = COLLISION_TYPE_BALL
+
+    space.add(ball_body, ball_shape)
+
+    return {"body": ball_body, "shape": ball_shape, "surface": ball_surface, "color": color}
+```
+
+</details>
+
+### 4. Effetto sonoro
+Aggiungi un suono diverso quando la palla entra nel canestro e quando rimbalza via.
+
+<details>
+<summary>Suggerimento</summary>
+
+Usa `pygame.mixer.Sound("file.wav")` per caricare un suono e `sound.play()` per riprodurlo. Puoi generare suoni semplici con `pygame.sndarray` o scaricare file .wav gratuiti.
+
+</details>
+
+<details>
+<summary>Soluzione</summary>
+
+Dopo `pygame.init()`:
+
+```python
+pygame.mixer.init()
+# Crea suoni sintetici semplici
+import numpy as np
+sample_rate = 44100
+# Suono "catch" (nota alta breve)
+t = np.linspace(0, 0.15, int(sample_rate * 0.15), False)
+catch_wave = np.sin(2 * np.pi * 880 * t) * 0.3
+catch_sound = pygame.sndarray.make_sound(
+    (catch_wave * 32767).astype(np.int16).reshape(-1, 1).repeat(2, axis=1))
+# Suono "miss" (nota bassa breve)
+t = np.linspace(0, 0.2, int(sample_rate * 0.2), False)
+miss_wave = np.sin(2 * np.pi * 220 * t) * 0.3
+miss_sound = pygame.sndarray.make_sound(
+    (miss_wave * 32767).astype(np.int16).reshape(-1, 1).repeat(2, axis=1))
+```
+
+Nel callback `on_ball_enter_basket()`:
+
+```python
+if ball["color"] == basket_top_color:
+    caught = True
+    catch_sound.play()    # 🆕
+    ball["body"].velocity = (0, 80)
+else:
+    missed = True
+    miss_sound.play()     # 🆕
+    ...
+```
 
 </details>
