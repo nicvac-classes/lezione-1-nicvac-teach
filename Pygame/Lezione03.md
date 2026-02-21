@@ -1380,7 +1380,7 @@ Aggiungi un suono diverso quando la palla entra nel canestro e quando rimbalza v
 <details>
 <summary>Suggerimento</summary>
 
-Usa `pygame.mixer.Sound("file.wav")` per caricare un suono e `sound.play()` per riprodurlo. Puoi generare suoni semplici con `pygame.sndarray` o scaricare file .wav gratuiti.
+Usa `pygame.mixer.Sound("file.wav")` per caricare un file audio `.wav` e `sound.play()` per riprodurlo. Puoi scaricare file .wav gratuiti da siti come [freesound.org](https://freesound.org/).
 
 </details>
 
@@ -1391,19 +1391,8 @@ Dopo `pygame.init()`:
 
 ```python
 pygame.mixer.init()
-# Crea suoni sintetici semplici
-import numpy as np
-sample_rate = 44100
-# Suono "catch" (nota alta breve)
-t = np.linspace(0, 0.15, int(sample_rate * 0.15), False)
-catch_wave = np.sin(2 * np.pi * 880 * t) * 0.3
-catch_sound = pygame.sndarray.make_sound(
-    (catch_wave * 32767).astype(np.int16).reshape(-1, 1).repeat(2, axis=1))
-# Suono "miss" (nota bassa breve)
-t = np.linspace(0, 0.2, int(sample_rate * 0.2), False)
-miss_wave = np.sin(2 * np.pi * 220 * t) * 0.3
-miss_sound = pygame.sndarray.make_sound(
-    (miss_wave * 32767).astype(np.int16).reshape(-1, 1).repeat(2, axis=1))
+catch_sound = pygame.mixer.Sound("catch.wav")
+miss_sound = pygame.mixer.Sound("miss.wav")
 ```
 
 Nel callback `on_ball_enter_basket()`:
@@ -1420,3 +1409,77 @@ else:
 ```
 
 </details>
+
+### 5. Vite e Game Over
+Il giocatore ha 3 vite. Ogni volta che la palla rimbalza via (miss), perde una vita. Quando le vite arrivano a 0, il gioco si blocca e appare la scritta "Game Over". Premendo la barra spaziatrice, il gioco ricomincia da capo con 3 vite.
+
+<details>
+<summary>Suggerimento</summary>
+
+- Usa una variabile `lives = 3` e una `game_over = False`.
+- Nel game loop, quando `missed` e la palla esce dallo schermo, decrementa `lives`. Se `lives == 0`, imposta `game_over = True`.
+- Quando `game_over` è `True`, disegna solo la scritta "Game Over" e ascolta la pressione di `K_SPACE` per resettare tutto.
+- Per disegnare il testo usa `pygame.font.SysFont()` e `font.render()`.
+- Per mostrare le vite, disegna il numero sullo schermo con lo stesso meccanismo.
+
+</details>
+
+<details>
+<summary>Soluzione</summary>
+
+Aggiungi le variabili globali:
+
+```python
+lives = 3
+game_over = False
+font = pygame.font.SysFont(None, 72)
+hud_font = pygame.font.SysFont(None, 36)
+```
+
+Nel game loop, gestisci lo stato `game_over`:
+
+```python
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if game_over and event.key == pygame.K_SPACE:
+                # Ricomincia il gioco
+                lives = 3
+                game_over = False
+                ball = reset_ball(ball)
+            # ... gestione frecce (solo se non game_over) ...
+
+    screen.fill(DARK_BG)
+
+    if game_over:
+        text = font.render("GAME OVER", True, RED)
+        rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(text, rect)
+        hint = hud_font.render("Premi SPAZIO per ricominciare", True, YELLOW)
+        hint_rect = hint.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        screen.blit(hint, hint_rect)
+    else:
+        # ... logica di gioco e disegno normali ...
+
+        # Quando la palla rimbalza via ed esce dallo schermo:
+        if missed:
+            bx, by = ball["body"].position
+            if by > HEIGHT + 50 or bx < -50 or bx > WIDTH + 50:
+                lives -= 1
+                if lives <= 0:
+                    game_over = True
+                ball = reset_ball(ball)
+
+        # Mostra le vite in alto a sinistra
+        lives_text = hud_font.render(f"Vite: {lives}", True, YELLOW)
+        screen.blit(lives_text, (10, 10))
+
+    space.step(1 / FPS)
+    pygame.display.flip()
+    clock.tick(FPS)
+```
+
+</details>
+

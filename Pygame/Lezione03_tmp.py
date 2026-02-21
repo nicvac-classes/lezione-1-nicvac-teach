@@ -38,23 +38,6 @@ COLLISION_TYPE_BASKET = 2
 # INIZIALIZZAZIONE
 # ============================================================
 pygame.init()
-
-pygame.mixer.init()
-# Crea suoni sintetici semplici
-import numpy as np
-sample_rate = 44100
-# Suono "catch" (nota alta breve)
-t = np.linspace(0, 0.15, int(sample_rate * 0.15), False)
-catch_wave = np.sin(2 * np.pi * 880 * t) * 0.3
-catch_sound = pygame.sndarray.make_sound(
-    (catch_wave * 32767).astype(np.int16).reshape(-1, 1).repeat(2, axis=1))
-# Suono "miss" (nota bassa breve)
-t = np.linspace(0, 0.2, int(sample_rate * 0.2), False)
-miss_wave = np.sin(2 * np.pi * 220 * t) * 0.3
-miss_sound = pygame.sndarray.make_sound(
-    (miss_wave * 32767).astype(np.int16).reshape(-1, 1).repeat(2, axis=1))
-
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Color Basket")
 clock = pygame.time.Clock()
@@ -192,11 +175,9 @@ def on_ball_enter_basket(arbiter, space, data):
     
     if ball["color"] == basket_top_color:
         caught = True
-        catch_sound.play()    # 🆕
         ball["body"].velocity = (0, 80)   # rallenta la pallina
     else:
         missed = True
-        miss_sound.play()     # 🆕
         # Rimbalza la pallina lateralmente
         direction = random.choice([-1, 1])
         ball["body"].velocity = (direction * 600, random.randint(-350, -150))
