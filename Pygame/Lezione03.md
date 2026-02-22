@@ -1410,76 +1410,101 @@ else:
 
 </details>
 
-### 5. Vite e Game Over
-Il giocatore ha 3 vite. Ogni volta che la palla rimbalza via (miss), perde una vita. Quando le vite arrivano a 0, il gioco si blocca e appare la scritta "Game Over". Premendo la barra spaziatrice, il gioco ricomincia da capo con 3 vite.
+### 5. Gestione delle vite e Game Over
+Il giocatore ha 3 vite. Ogni volta che la palla non entra nel canestro (colore sbagliato o palla uscita senza toccare il canestro), perde una vita. Quando le vite finiscono, appare la scritta "Game Over" al centro dello schermo e il gioco si blocca. Premendo la barra spaziatrice il gioco ricomincia da zero.
 
 <details>
 <summary>Suggerimento</summary>
 
-- Usa una variabile `lives = 3` e una `game_over = False`.
-- Nel game loop, quando `missed` e la palla esce dallo schermo, decrementa `lives`. Se `lives == 0`, imposta `game_over = True`.
-- Quando `game_over` è `True`, disegna solo la scritta "Game Over" e ascolta la pressione di `K_SPACE` per resettare tutto.
-- Per disegnare il testo usa `pygame.font.SysFont()` e `font.render()`.
-- Per mostrare le vite, disegna il numero sullo schermo con lo stesso meccanismo.
+- Crea una variabile `lives = 3` e una variabile `game_over = False`
+- In `reset_ball()`, se la palla non è stata catturata (`caught` è `False`), decrementa `lives`
+- Quando `lives <= 0`, imposta `game_over = True`
+- Nel game loop, se `game_over` è `True`, disegna solo la scritta "Game Over" e intercetta `pygame.K_SPACE` per resettare tutto
+- Mostra le vite rimanenti a schermo con `font.render()`
 
 </details>
 
 <details>
 <summary>Soluzione</summary>
 
-Aggiungi le variabili globali:
+Aggiungi prima del game loop:
 
 ```python
+font = pygame.font.SysFont("Arial", 30)
+font_big = pygame.font.SysFont("Arial", 60)
 lives = 3
 game_over = False
-font = pygame.font.SysFont(None, 72)
-hud_font = pygame.font.SysFont(None, 36)
 ```
 
-Nel game loop, gestisci lo stato `game_over`:
+Modifica `reset_ball()` per gestire le vite:
 
 ```python
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if game_over and event.key == pygame.K_SPACE:
-                # Ricomincia il gioco
-                lives = 3
-                game_over = False
-                ball = reset_ball(ball)
-            # ... gestione frecce (solo se non game_over) ...
+def reset_ball(ball):
+    """Rimuove la pallina corrente e ne crea una nuova."""
+    global caught, missed, lives, game_over
+    
+    if not caught:
+        lives -= 1
+        if lives <= 0:
+            game_over = True
 
-    screen.fill(DARK_BG)
+    caught = False
+    missed = False
 
-    if game_over:
-        text = font.render("GAME OVER", True, RED)
-        rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-        screen.blit(text, rect)
-        hint = hud_font.render("Premi SPAZIO per ricominciare", True, YELLOW)
-        hint_rect = hint.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
-        screen.blit(hint, hint_rect)
-    else:
-        # ... logica di gioco e disegno normali ...
-
-        # Quando la palla rimbalza via ed esce dallo schermo:
-        if missed:
-            bx, by = ball["body"].position
-            if by > HEIGHT + 50 or bx < -50 or bx > WIDTH + 50:
-                lives -= 1
-                if lives <= 0:
-                    game_over = True
-                ball = reset_ball(ball)
-
-        # Mostra le vite in alto a sinistra
-        lives_text = hud_font.render(f"Vite: {lives}", True, YELLOW)
-        screen.blit(lives_text, (10, 10))
-
-    space.step(1 / FPS)
-    pygame.display.flip()
-    clock.tick(FPS)
+    # Rimuove la palla dallo spazio fisico.
+    space.remove(ball["shape"], ball["body"])
+    # Ritorna la nuova palla
+    return create_ball()
 ```
 
-</details>
+Crea una funzione per resettare tutto il gioco:
 
+```python
+def reset_game():
+    global lives, game_over, caught, missed, basket_top_color_index, target_rotation_angle, ball
+    lives = 3
+    game_over = False
+    caught = False
+    missed = False
+    basket_top_color_index = 0
+    target_rotation_angle = 0.0
+    basket_body.angle = 0.0
+    basket_body.angular_velocity = 0
+    space.remove(ball["shape"], ball["body"])
+    ball = create_ball()
+```
+
+Nel game loop, intercetta la barra spaziatrice negli eventi:
+
+```python
+        if event.type == pygame.KEYDOWN:
+            if game_over and event.key == pygame.K_SPACE:         # 🆕
+                reset_game()                                      # 🆕
+            elif not game_over:                                   # 🆕
+                if event.key == pygame.K_LEFT:
+                    # ... rotazione come prima
+                elif event.key == pygame.K_RIGHT:
+                    # ... rotazione come prima
+```
+
+Nel game loop, dopo la sezione di disegno, gestisci il Game Over:
+
+```python
+    if game_over:
+        # Scritta Game Over centrata
+        go_surface = font_big.render("Game Over", True, (255, 50, 50))
+        go_rect = go_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(go_surface, go_rect)
+        # Istruzione per ricominciare
+        restart_surface = font.render("Premi SPAZIO per ricominciare", True, (200, 200, 200))
+        restart_rect = restart_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        screen.blit(restart_surface, restart_rect)
+    else:
+        # Mostra le vite rimanenti
+        lives_surface = font.render(f"Vite: {'♥ ' * lives}", True, (255, 100, 100))
+        screen.blit(lives_surface, (10, 10))
+```
+
+**Nota:** Quando `game_over` è `True`, la logica di gioco (rotazione, collisioni, reset) viene saltata perché i tasti sono bloccati dal controllo `elif not game_over`. La simulazione fisica continua a girare ma non ha effetti visibili perché la palla è ferma fuori schermo dopo il reset.
+
+</details>

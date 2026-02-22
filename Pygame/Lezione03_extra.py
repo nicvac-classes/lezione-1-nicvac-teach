@@ -46,6 +46,9 @@ clock = pygame.time.Clock()
 space = pymunk.Space()
 space.gravity = (0, 500)
 
+lives = 3
+game_over = False
+
 # ============================================================
 # Creazione e disegno degli oggetti
 # ============================================================
@@ -144,6 +147,10 @@ def reset_ball(ball):
     if caught:
         gx, gy = space.gravity
         space.gravity = (gx, gy + 20)  # la gravità aumenta ogni volta
+    else:
+        lives -= 1
+        if lives <= 0:
+            game_over = True
 
     caught = False
     missed = False
@@ -153,6 +160,18 @@ def reset_ball(ball):
     # Ritorna la nuova palla
     return create_ball()
 
+def reset_game():
+    global lives, game_over, caught, missed, basket_top_color_index, target_rotation_angle, ball
+    lives = 3
+    game_over = False
+    caught = False
+    missed = False
+    basket_top_color_index = 0
+    target_rotation_angle = 0.0
+    basket_body.angle = 0.0
+    basket_body.angular_velocity = 0
+    space.remove(ball["shape"], ball["body"])
+    ball = create_ball()
 
 # ============================================================
 # COLLISION HANDLER
@@ -197,6 +216,7 @@ ball = create_ball()
 # GAME LOOP
 # ============================================================
 font = pygame.font.SysFont("Arial", 30)
+font_big = pygame.font.SysFont("Arial", 60)
 score = 0
 
 basket_body = basket["body"]
@@ -206,14 +226,17 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                target_rotation_angle += math.pi / 2
-                basket_body.angular_velocity = BASKET_ROTATION_STEP * FPS
-                basket_top_color_index = (basket_top_color_index - 1) % 4
-            elif event.key == pygame.K_RIGHT:
-                target_rotation_angle -= math.pi / 2
-                basket_body.angular_velocity = -BASKET_ROTATION_STEP * FPS
-                basket_top_color_index = (basket_top_color_index + 1) % 4
+            if game_over and event.key == pygame.K_SPACE:         # 🆕
+                reset_game()                                      # 🆕
+            elif not game_over:                                   # 🆕
+                if event.key == pygame.K_LEFT:
+                    target_rotation_angle += math.pi / 2
+                    basket_body.angular_velocity = BASKET_ROTATION_STEP * FPS
+                    basket_top_color_index = (basket_top_color_index - 1) % 4
+                elif event.key == pygame.K_RIGHT:
+                    target_rotation_angle -= math.pi / 2
+                    basket_body.angular_velocity = -BASKET_ROTATION_STEP * FPS
+                    basket_top_color_index = (basket_top_color_index + 1) % 4
 
     screen.fill(DARK_BG)
     
@@ -247,6 +270,20 @@ while running:
     # --- Disegno gli oggetti ---
     draw_basket(screen, basket)
     draw_ball(screen, ball)
+
+    if game_over:
+        # Scritta Game Over centrata
+        go_surface = font_big.render("Game Over", True, (255, 50, 50))
+        go_rect = go_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(go_surface, go_rect)
+        # Istruzione per ricominciare
+        restart_surface = font.render("Premi SPAZIO per ricominciare", True, (200, 200, 200))
+        restart_rect = restart_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        screen.blit(restart_surface, restart_rect)
+    else:
+        # Mostra le vite rimanenti
+        lives_surface = font.render(f"Vite: {'♥ ' * lives}", True, (255, 100, 100))
+        screen.blit(lives_surface, (10, 10))
 
     score_surface = font.render(f"Score: {score}", True, (255, 255, 255))
     screen.blit(score_surface, (10, 10))
