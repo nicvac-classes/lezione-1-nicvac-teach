@@ -138,10 +138,10 @@ def draw_ball( screen, ball):
 
 def reset_ball(ball):
     """Rimuove la pallina corrente e ne crea una nuova."""
-    global caught, missed
+    global caught, missed, lives, game_over
 
     global score
-    if caught:
+    if caught and not game_over:
         score += 1
     
     if caught:
@@ -161,7 +161,8 @@ def reset_ball(ball):
     return create_ball()
 
 def reset_game():
-    global lives, game_over, caught, missed, basket_top_color_index, target_rotation_angle, ball
+    global lives, game_over, caught, missed, basket_top_color_index, target_rotation_angle, ball, score
+    score = 0
     lives = 3
     game_over = False
     caught = False
@@ -283,7 +284,7 @@ while running:
     else:
         # Mostra le vite rimanenti
         lives_surface = font.render(f"Vite: {'♥ ' * lives}", True, (255, 100, 100))
-        screen.blit(lives_surface, (10, 10))
+        screen.blit(lives_surface, ( WIDTH//2 + WIDTH//4 , 10))
 
     score_surface = font.render(f"Score: {score}", True, (255, 255, 255))
     screen.blit(score_surface, (10, 10))

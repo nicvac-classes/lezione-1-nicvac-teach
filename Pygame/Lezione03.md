@@ -1443,6 +1443,9 @@ def reset_ball(ball):
     """Rimuove la pallina corrente e ne crea una nuova."""
     global caught, missed, lives, game_over
     
+    # Se presenta anche la parte del punteggio, 
+    # score va aumentato se not game_over ... 
+
     if not caught:
         lives -= 1
         if lives <= 0:
@@ -1461,8 +1464,9 @@ Crea una funzione per resettare tutto il gioco:
 
 ```python
 def reset_game():
-    global lives, game_over, caught, missed, basket_top_color_index, target_rotation_angle, ball
+    global lives, game_over, caught, missed, basket_top_color_index, target_rotation_angle, ball, score
     lives = 3
+    score = 0
     game_over = False
     caught = False
     missed = False
@@ -1502,7 +1506,7 @@ Nel game loop, dopo la sezione di disegno, gestisci il Game Over:
     else:
         # Mostra le vite rimanenti
         lives_surface = font.render(f"Vite: {'♥ ' * lives}", True, (255, 100, 100))
-        screen.blit(lives_surface, (10, 10))
+        screen.blit(lives_surface, ( WIDTH//2 + WIDTH//4 , 10))
 ```
 
 **Nota:** Quando `game_over` è `True`, la logica di gioco (rotazione, collisioni, reset) viene saltata perché i tasti sono bloccati dal controllo `elif not game_over`. La simulazione fisica continua a girare ma non ha effetti visibili perché la palla è ferma fuori schermo dopo il reset.
