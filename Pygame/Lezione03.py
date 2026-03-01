@@ -31,8 +31,9 @@ BASKET_RADIUS = BALL_RADIUS * 1.9  # proporzionato alla pallina come NBA (rim/ba
 BASKET_ROTATION_STEP = math.pi / 20  # rad/frame – Quanto deve ruotare per ogni frame
 
 # Gestione delle Collisioni
-COLLISION_TYPE_BALL = 1
-COLLISION_TYPE_BASKET = 2
+# Uso la notazione binaria per comodità gestione collisioni
+COLLISION_TYPE_BALL   = 0b01  
+COLLISION_TYPE_BASKET = 0b10
 
 # ============================================================
 # INIZIALIZZAZIONE
@@ -71,7 +72,7 @@ def create_basket():
 
     # BODY 
     # Definiamo il Body del canestro (oggetto fisico)
-    # KINEMATIC: non soggetto alla gravità
+    # KINEMATIC: non soggetto alla gravità, interagisce con gli altri body
     basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC) 
     basket_body.position = BASKET_CENTER
 
@@ -79,8 +80,11 @@ def create_basket():
     # Definiamo la forma fisica
     # La impostiamo come sensore per rilevare la collisione con la pallina
     basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)
-    basket_shape.sensor = True
+    basket_shape.elasticity = 0.4
     basket_shape.collision_type = COLLISION_TYPE_BASKET
+    # mask: oggetti con cui interagire fisicamente
+    basket_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BASKET, 
+                                             mask=COLLISION_TYPE_BALL)
 
     # Aggiungo il canestro allo spazio fisico
     space.add(basket_body, basket_shape)
@@ -116,7 +120,8 @@ def create_ball():
     # Definiamo il Body del canestro (oggetto fisico)
     mass = 1
     moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)
-    ball_body = pymunk.Body(mass, moment)
+    # DYNAMIC: soggetto alla gravità, interagisce con gli altri body
+    ball_body = pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)
     ball_body.position = (BASKET_CENTER[0], BALL_START_Y)
 
     # SHAPE
@@ -125,6 +130,9 @@ def create_ball():
     ball_shape.elasticity = 0.7
     ball_shape.friction = 0.5
     ball_shape.collision_type = COLLISION_TYPE_BALL
+    # mask: oggetti con cui interagire fisicamente
+    ball_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
+                                           mask=COLLISION_TYPE_BALL | COLLISION_TYPE_BASKET)
 
     # Aggiungo la palla allo spazio fisico
     space.add(ball_body, ball_shape)
@@ -173,12 +181,16 @@ def on_ball_enter_basket(arbiter, space, data):
     
     if ball["color"] == basket_top_color:
         caught = True
+        # Attivando la pallina come sensor, non interagisce più con il canestro, attraversandolo
+        #ball["shape"].sensor = True 
+        ball["shape"].filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
+                                                  mask=COLLISION_TYPE_BALL)
         ball["body"].velocity = (0, 80)   # rallenta la pallina
     else:
         missed = True
-        # Rimbalza la pallina lateralmente
+        # Applico una forza su x per far rimbalzare la pallina lateralmente
         direction = random.choice([-1, 1])
-        ball["body"].velocity = (direction * 600, random.randint(-350, -150))
+        ball["body"].apply_impulse_at_local_point((direction * 100, 0))
 
     return False
 
