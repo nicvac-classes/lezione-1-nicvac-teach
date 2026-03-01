@@ -18,7 +18,7 @@ E impareremo concetti nuovi:
 - Disegnare oggetti personalizzati con le **Surface** trasparenti
 - Usare `pygame.draw.arc` per disegnare archi colorati
 - Il body **KINEMATIC** (controllabile dal codice, non soggetto a gravità)
-- Le **collisioni personalizzate** con sensori e callback
+- Le **collisioni personalizzate** con maschere di collisione e callback
 - La **rotazione** grafica e fisica degli oggetti
 
 ---
@@ -33,7 +33,7 @@ E impareremo concetti nuovi:
 | 4 | Dare fisicità alla palla: body dinamico e shape |
 | 5 | Disegnare la palla con `blit` |
 | 6 | Creare il canestro: archi colorati con `arc` |
-| 7 | Dare fisicità al canestro: body KINEMATIC e sensore |
+| 7 | Dare fisicità al canestro: body KINEMATIC e maschere di collisione |
 | 8 | Disegnare il canestro con rotazione |
 | 9 | Ruotare il canestro con le frecce |
 | 10 | Gestire le collisioni |
@@ -71,6 +71,7 @@ Nuovo:
 | `import math` | Libreria matematica, ci servirà per angoli e rotazioni |
 | `import random` | Per scegliere colori casuali |
 | Costanti (`WIDTH`, `HEIGHT`, `FPS`, colori, ecc.) | Valori fissi usati in tutto il programma, definiti una sola volta |
+| Notazione binaria `0b01`, `0b10` | Modo comodo per scrivere costanti da usare come maschere di bit per le collisioni |
 
 ### Come combinarli
 
@@ -88,7 +89,11 @@ Nuovo:
    - `BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)` — posizione al centro in basso
    - `BASKET_RADIUS = BALL_RADIUS * 1.9` — proporzionato alla pallina (come nella NBA, il rapporto canestro/palla è circa 1.9)
    - `BASKET_ROTATION_STEP = math.pi / 20` — velocità di rotazione in radianti per frame
-6. Definisci le costanti per le collisioni: `COLLISION_TYPE_BALL = 1` e `COLLISION_TYPE_BASKET = 2` (le useremo più avanti)
+6. Definisci le costanti per le collisioni usando la **notazione binaria**:
+   - `COLLISION_TYPE_BALL = 0b01` — bit 0
+   - `COLLISION_TYPE_BASKET = 0b10` — bit 1
+   
+   La notazione `0b...` è comoda perché ogni oggetto ha un singolo bit attivo: questo torna utile quando useremo le maschere di collisione (ogni bit rappresenta una "categoria").
 7. Inizializza Pygame con finestra, caption e clock (v. Lezione 01)
 8. Scrivi il game loop base: gestione `QUIT`, `screen.fill(DARK_BG)`, `pygame.display.flip()`, `clock.tick(FPS)`
 9. Chiusura pulita con `pygame.quit()` e `sys.exit()`
@@ -128,8 +133,10 @@ BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
 BASKET_RADIUS = BALL_RADIUS * 1.9
 BASKET_ROTATION_STEP = math.pi / 20
 
-COLLISION_TYPE_BALL = 1
-COLLISION_TYPE_BASKET = 2
+# Gestione delle Collisioni
+# Uso la notazione binaria per comodità gestione collisioni
+COLLISION_TYPE_BALL = 0b01
+COLLISION_TYPE_BASKET = 0b10
 
 # ============================================================
 # INIZIALIZZAZIONE
@@ -216,8 +223,10 @@ BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
 BASKET_RADIUS = BALL_RADIUS * 1.9
 BASKET_ROTATION_STEP = math.pi / 20
 
-COLLISION_TYPE_BALL = 1
-COLLISION_TYPE_BASKET = 2
+# Gestione delle Collisioni
+# Uso la notazione binaria per comodità gestione collisioni
+COLLISION_TYPE_BALL = 0b01
+COLLISION_TYPE_BASKET = 0b10
 
 # ============================================================
 # INIZIALIZZAZIONE
@@ -317,8 +326,10 @@ BASKET_CENTER = (WIDTH // 2, HEIGHT - 150)
 BASKET_RADIUS = BALL_RADIUS * 1.9
 BASKET_ROTATION_STEP = math.pi / 20
 
-COLLISION_TYPE_BALL = 1
-COLLISION_TYPE_BASKET = 2
+# Gestione delle Collisioni
+# Uso la notazione binaria per comodità gestione collisioni
+COLLISION_TYPE_BALL = 0b01
+COLLISION_TYPE_BASKET = 0b10
 
 # ============================================================
 # INIZIALIZZAZIONE
@@ -382,19 +393,20 @@ sys.exit()
 
 ### Obiettivo
 
-Aggiungere il **body** e la **shape** alla palla, in modo che Pymunk ne gestisca il movimento e le collisioni (v. Lezione 02).
+Aggiungere il **body** e la **shape** alla palla, in modo che Pymunk ne gestisca il movimento e le collisioni (v. Lezione 02). Usamo anche una **maschera di collisione** per controllare con quali altri oggetti la palla interagisce fisicamente.
 
 ### Ingredienti (v. Lezione 02)
 
 | Elemento | Descrizione |
 |----------|-------------|
 | `pymunk.moment_for_circle(mass, inner, outer)` | Calcola il momento d'inerzia per un cerchio |
-| `pymunk.Body(mass, moment)` | Crea un body dinamico (soggetto a gravità) |
+| `pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)` | Crea un body **dinamico** (soggetto a gravità). Il tipo DYNAMIC è quello di default, ma specificarlo esplicitamente rende il codice più leggibile. |
 | `body.position = (x, y)` | Imposta la posizione iniziale |
 | `pymunk.Circle(body, radius)` | Crea una shape circolare associata al body |
 | `shape.elasticity` | Quanto rimbalza (0 = niente, 1 = perfetto) |
 | `shape.friction` | Quanto attrito ha |
 | `shape.collision_type` | Un intero che identifica il "tipo" dell'oggetto per le collisioni |
+| `shape.filter = pymunk.ShapeFilter(categories=..., mask=...)` | **Maschera di collisione**: `categories` è il "tipo" della shape, `mask` è l'insieme dei tipi con cui interagisce fisicamente. Si usano valori binari: la collisione avviene solo se `categories` dell'uno ha bit in comune con `mask` dell'altro. |
 | `space.add(body, shape)` | Aggiunge body e shape allo spazio fisico |
 
 ### Come combinarli
@@ -404,19 +416,20 @@ Aggiungiamo la parte fisica alla funzione `create_ball()`:
 1. Dopo il disegno, crea il body:
    - `mass = 1`
    - Calcola il momento con `pymunk.moment_for_circle(mass, 0, BALL_RADIUS)`
-   - Crea il body con `pymunk.Body(mass, moment)`
-   - Imposta la posizione: `body.position = (BASKET_CENTER[0], BALL_START_Y)` — la palla parte centrata sopra il canestro
+   - Crea il body con `pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)`
+   - Imposta la posizione: `ball_body.position = (BASKET_CENTER[0], BALL_START_Y)` — la palla parte centrata sopra il canestro
 2. Crea la shape:
-   - `pymunk.Circle(body, BALL_RADIUS)`
+   - `pymunk.Circle(ball_body, BALL_RADIUS)`
    - `shape.elasticity = 0.7`
    - `shape.friction = 0.5`
-   - `shape.collision_type = COLLISION_TYPE_BALL` — identifica la palla per le collisioni future
+   - `shape.collision_type = COLLISION_TYPE_BALL`
+   - `shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL, mask=COLLISION_TYPE_BALL | COLLISION_TYPE_BASKET)` — la palla interagisce fisicamente sia con altre palle che con il canestro
 3. Aggiungi body e shape allo spazio con `space.add(body, shape)`
 4. Aggiungi `"body": ball_body` e `"shape": ball_shape` al dizionario restituito
 
 ### Esercizio
 
-Modifica la funzione `create_ball()` aggiungendo body e shape come descritto.
+Modifica la funzione `create_ball()` aggiungendo body, shape e maschera di collisione come descritto.
 
 Esegui il programma. Ancora niente di visibile: la palla cade nello spazio fisico, ma non la stiamo ancora disegnando sullo schermo!
 
@@ -437,9 +450,10 @@ def create_ball():
 
     # BODY                                                                    # 🆕
     # Definiamo il Body della palla (oggetto fisico)                          # 🆕
+    # DYNAMIC: soggetto alla gravità, interagisce con gli altri body          # 🆕
     mass = 1                                                                  # 🆕
     moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)                   # 🆕
-    ball_body = pymunk.Body(mass, moment)                                     # 🆕
+    ball_body = pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)      # 🆕
     ball_body.position = (BASKET_CENTER[0], BALL_START_Y)                     # 🆕
                                                                               # 🆕
     # SHAPE                                                                   # 🆕
@@ -448,6 +462,9 @@ def create_ball():
     ball_shape.elasticity = 0.7                                               # 🆕
     ball_shape.friction = 0.5                                                 # 🆕
     ball_shape.collision_type = COLLISION_TYPE_BALL                            # 🆕
+    # mask: oggetti con cui interagire fisicamente                             # 🆕
+    ball_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,    # 🆕
+                                           mask=COLLISION_TYPE_BALL | COLLISION_TYPE_BASKET)  # 🆕
                                                                               # 🆕
     # Aggiungo la palla allo spazio fisico                                    # 🆕
     space.add(ball_body, ball_shape)                                          # 🆕
@@ -594,21 +611,22 @@ ball = create_ball()
 
 ---
 
-## Blocco 7 - Dare fisicità al canestro: body KINEMATIC e sensore
+## Blocco 7 - Dare fisicità al canestro: body KINEMATIC e maschere di collisione
 
 ### Obiettivo
 
 Aggiungere un body e una shape al canestro. A differenza della palla, il canestro:
 - Non deve cadere → useremo un body **KINEMATIC** (controllabile dal codice, non soggetto a gravità)
-- Non deve bloccare fisicamente la palla → la sua shape sarà un **sensore** (rileva le collisioni senza generare reazioni fisiche)
+- Deve interagire fisicamente con la palla (rimbalzarla) ma solo in certi casi → useremo le **maschere di collisione** (`ShapeFilter`) per controllare quali oggetti interagiscono tra loro
 
 ### Ingredienti
 
 | Elemento | Descrizione |
 |----------|-------------|
 | `pymunk.Body(body_type=pymunk.Body.KINEMATIC)` | Crea un body **cinematico**: non è soggetto a gravità né a forze, ma può essere mosso dal codice (posizione, rotazione, velocità). |
-| `shape.sensor = True` | Trasforma la shape in un **sensore**: rileva le collisioni (chiama i callback) ma non genera reazioni fisiche (non blocca, non fa rimbalzare). |
+| `shape.elasticity` | Quanto rimbalza la shape (0 = niente, 1 = perfetto) |
 | `shape.collision_type = intero` | Assegna un "tipo" alla shape per identificarla nelle collisioni |
+| `shape.filter = pymunk.ShapeFilter(categories=..., mask=...)` | **Maschera di collisione**: `categories` è il "tipo" della shape, `mask` specifica con quali categorie interagisce. La collisione fisica avviene solo se i bit di `categories` di un oggetto coincidono con i bit di `mask` dell'altro. |
 
 ### Come combinarli
 
@@ -617,14 +635,17 @@ Aggiungiamo la parte fisica alla funzione `create_basket()`:
 1. Crea il body cinematico: `pymunk.Body(body_type=pymunk.Body.KINEMATIC)`
 2. Imposta la posizione: `basket_body.position = BASKET_CENTER`
 3. Crea la shape circolare: `pymunk.Circle(basket_body, BASKET_RADIUS)`
-4. Imposta la shape come sensore: `basket_shape.sensor = True`
+4. Imposta l'elasticità: `basket_shape.elasticity = 0.4`
 5. Assegna il tipo di collisione: `basket_shape.collision_type = COLLISION_TYPE_BASKET`
-6. Aggiungi body e shape allo spazio: `space.add(basket_body, basket_shape)`
-7. Aggiungi `"body"` e `"shape"` al dizionario restituito
+6. Imposta la maschera di collisione: `basket_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BASKET, mask=COLLISION_TYPE_BALL)` — il canestro interagisce fisicamente solo con la palla
+7. Aggiungi body e shape allo spazio: `space.add(basket_body, basket_shape)`
+8. Aggiungi `"body"` e `"shape"` al dizionario restituito
+
+**Nota:** La palla interagisce fisicamente con il canestro (rimbalza) finché la sua maschera include `COLLISION_TYPE_BASKET`. Quando vorremo far passare la palla attraverso il canestro (palla "caught"), cambieremo la maschera della palla nel callback, escludendo il canestro.
 
 ### Esercizio
 
-Modifica la funzione `create_basket()` aggiungendo body KINEMATIC e shape sensore.
+Modifica la funzione `create_basket()` aggiungendo body KINEMATIC, shape con elasticità e maschere di collisione.
 
 Esegui il programma. Ancora nessuna differenza visiva: il canestro esiste nello spazio fisico ma non lo stiamo disegnando. Prossimo blocco!
 
@@ -652,16 +673,18 @@ def create_basket():
 
     # BODY                                                                    # 🆕
     # Definiamo il Body del canestro (oggetto fisico)                         # 🆕
-    # KINEMATIC: non soggetto alla gravità                                    # 🆕
+    # KINEMATIC: non soggetto alla gravità, interagisce con gli altri body    # 🆕
     basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)                # 🆕
     basket_body.position = BASKET_CENTER                                      # 🆕
                                                                               # 🆕
     # SHAPE                                                                   # 🆕
     # Definiamo la forma fisica                                               # 🆕
-    # La impostiamo come sensore per rilevare la collisione con la pallina    # 🆕
     basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)                  # 🆕
-    basket_shape.sensor = True                                                # 🆕
+    basket_shape.elasticity = 0.4                                             # 🆕
     basket_shape.collision_type = COLLISION_TYPE_BASKET                        # 🆕
+    # mask: oggetti con cui interagire fisicamente                             # 🆕
+    basket_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BASKET, # 🆕
+                                             mask=COLLISION_TYPE_BALL)         # 🆕
                                                                               # 🆕
     # Aggiungo il canestro allo spazio fisico                                 # 🆕
     space.add(basket_body, basket_shape)                                      # 🆕
@@ -704,7 +727,7 @@ Creiamo una funzione `draw_basket(screen, basket)`:
 
 Crea la funzione `draw_basket()` e chiamala nel game loop.
 
-Esegui il programma. Ora vedi il canestro con i 4 colori e la palla che cade! La palla attraversa il canestro perché la shape del canestro è un sensore (non blocca nulla). Per ora è esattamente quello che vogliamo.
+Esegui il programma. Ora vedi il canestro con i 4 colori e la palla che cade! La palla rimbalza sul bordo del canestro perché la shape del canestro interagisce fisicamente con la palla. Vedremo nel Blocco 10 come far passare la palla attraverso il canestro quando il colore è corretto.
 
 <details>
 <summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
@@ -776,7 +799,7 @@ Usiamo una tecnica di **rotazione smooth**: quando il giocatore preme un tasto, 
 
 Aggiungi la gestione dei tasti e la rotazione smooth al game loop.
 
-Esegui il programma. Premi le frecce SX e DX: il canestro ruota in modo fluido di 90° alla volta! La palla continua ad attraversarlo (è ancora un sensore).
+Esegui il programma. Premi le frecce SX e DX: il canestro ruota in modo fluido di 90° alla volta! La palla rimbalza sul bordo del canestro.
 
 <details>
 <summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
@@ -843,7 +866,7 @@ target_rotation_angle = 0.0
 
 ### Obiettivo
 
-Quando la palla tocca il canestro, vogliamo sapere se il colore corrisponde. Se sì, la palla "entra" nel canestro (rallenta). Se no, la palla "rimbalza via" (viene sparata di lato).
+Quando la palla tocca il canestro, vogliamo sapere se il colore corrisponde. Se sì, la palla "entra" nel canestro: modifichiamo la sua maschera di collisione in modo che non interagisca più fisicamente con il canestro e poi la rallentiamo. Se no, la palla "rimbalza via" con una spinta laterale.
 
 ### Ingredienti
 
@@ -851,9 +874,10 @@ Quando la palla tocca il canestro, vogliamo sapere se il colore corrisponde. Se 
 |----------|-------------|
 | `space.on_collision(type_a, type_b, begin=callback)` | Registra una funzione **callback** che viene chiamata quando due shape con i `collision_type` specificati si toccano |
 | `def callback(arbiter, space, data)` | La firma della funzione callback. `arbiter` contiene info sulla collisione. |
+| `shape.filter = pymunk.ShapeFilter(categories=..., mask=...)` | Cambia dinamicamente la maschera di collisione di una shape. Modificando `mask` possiamo far sì che la palla non interagisca più fisicamente con il canestro (la attraversa). |
 | `body.velocity = (vx, vy)` | Imposta direttamente la velocità di un body |
+| `body.apply_impulse_at_local_point((ix, iy))` | Applica un impulso (forza istantanea) al body nel suo sistema di riferimento locale |
 | `random.choice([-1, 1])` | Sceglie casualmente una direzione (sinistra o destra) |
-| `random.randint(a, b)` | Sceglie un intero casuale tra a e b |
 
 ### Come combinarli
 
@@ -865,10 +889,11 @@ Quando la palla tocca il canestro, vogliamo sapere se il colore corrisponde. Se 
    - Se `caught` o `missed` sono già `True`, la collisione è già stata gestita: ritorna `True` (ignora)
    - Se il colore della palla corrisponde al colore del canestro:
      - `caught = True`
+     - Modifica la maschera della palla escludendo il canestro: `ball["shape"].filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL, mask=COLLISION_TYPE_BALL)` — così la palla non interagisce più fisicamente con il canestro e lo attraversa
      - Rallenta la palla: `ball["body"].velocity = (0, 80)`
    - Altrimenti:
      - `missed = True`
-     - Fai rimbalzare la palla lateralmente: scegli una direzione casuale e imposta una velocità orizzontale di `direction * 600` e verticale casuale tra -350 e -150
+     - Fai rimbalzare la palla lateralmente con un impulso: scegli una direzione casuale e applica `ball["body"].apply_impulse_at_local_point((direction * 100, 0))`
    - Ritorna `False`
 4. Registra il callback: `space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET, begin=on_ball_enter_basket)`
 5. Posiziona tutto **prima** della creazione del canestro e della palla
@@ -877,7 +902,7 @@ Quando la palla tocca il canestro, vogliamo sapere se il colore corrisponde. Se 
 
 Aggiungi le variabili globali, la funzione callback e la registrazione del collision handler.
 
-Esegui il programma. Ora quando la palla tocca il canestro: se il colore corrisponde, la palla rallenta e scende; se non corrisponde, la palla viene sparata di lato! Però la palla non torna... lo risolviamo nel prossimo blocco.
+Esegui il programma. Ora quando la palla tocca il canestro: se il colore corrisponde, la maschera di collisione cambia e la palla attraversa il canestro e scende; se non corrisponde, la palla riceve un impulso laterale e rimbalza via! Però la palla non torna... lo risolviamo nel prossimo blocco.
 
 <details>
 <summary>Solo dopo aver svolto l'esercizio, apri qui per vedere la soluzione</summary>
@@ -895,7 +920,7 @@ target_rotation_angle = 0.0 # angolo attuale del canestro         # 🆕
 
 
 def on_ball_enter_basket(arbiter, space, data):                   # 🆕
-    """Callback: la pallina ha toccato il sensore del canestro.""" # 🆕
+    """Callback: la pallina ha toccato il canestro."""             # 🆕
                                                                   # 🆕
     # Colore del canestro                                         # 🆕
     basket_top_color = COLORS[basket_top_color_index]             # 🆕
@@ -906,12 +931,17 @@ def on_ball_enter_basket(arbiter, space, data):                   # 🆕
                                                                   # 🆕
     if ball["color"] == basket_top_color:                          # 🆕
         caught = True                                             # 🆕
+        # Modificando la maschera di collisione, la pallina non   # 🆕
+        # interagisce più con il canestro, attraversandolo        # 🆕
+        ball["shape"].filter = pymunk.ShapeFilter(                # 🆕
+            categories=COLLISION_TYPE_BALL,                       # 🆕
+            mask=COLLISION_TYPE_BALL)                             # 🆕
         ball["body"].velocity = (0, 80)   # rallenta la pallina   # 🆕
     else:                                                         # 🆕
         missed = True                                             # 🆕
-        # Rimbalza la pallina lateralmente                        # 🆕
+        # Applico una forza su x per far rimbalzare la pallina lateralmente  # 🆕
         direction = random.choice([-1, 1])                        # 🆕
-        ball["body"].velocity = (direction * 600, random.randint(-350, -150))  # 🆕
+        ball["body"].apply_impulse_at_local_point((direction * 100, 0))  # 🆕
                                                                   # 🆕
     return False                                                  # 🆕
 
@@ -1046,8 +1076,9 @@ BASKET_RADIUS = BALL_RADIUS * 1.9  # proporzionato alla pallina come NBA (rim/ba
 BASKET_ROTATION_STEP = math.pi / 20  # rad/frame – Quanto deve ruotare per ogni frame
 
 # Gestione delle Collisioni
-COLLISION_TYPE_BALL = 1
-COLLISION_TYPE_BASKET = 2
+# Uso la notazione binaria per comodità gestione collisioni
+COLLISION_TYPE_BALL = 0b01
+COLLISION_TYPE_BASKET = 0b10
 
 # ============================================================
 # INIZIALIZZAZIONE
@@ -1084,18 +1115,20 @@ def create_basket():
     # Interno del canestro
     pygame.draw.circle(basket_surface, DARK_BG, center, BASKET_RADIUS - 8)
 
-    # BODY 
+    # BODY
     # Definiamo il Body del canestro (oggetto fisico)
-    # KINEMATIC: non soggetto alla gravità
-    basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC) 
+    # KINEMATIC: non soggetto alla gravità, interagisce con gli altri body
+    basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
     basket_body.position = BASKET_CENTER
 
     # SHAPE
     # Definiamo la forma fisica
-    # La impostiamo come sensore per rilevare la collisione con la pallina
     basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)
-    basket_shape.sensor = True
+    basket_shape.elasticity = 0.4
     basket_shape.collision_type = COLLISION_TYPE_BASKET
+    # mask: oggetti con cui interagire fisicamente
+    basket_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BASKET,
+                                             mask=COLLISION_TYPE_BALL)
 
     # Aggiungo il canestro allo spazio fisico
     space.add(basket_body, basket_shape)
@@ -1129,9 +1162,10 @@ def create_ball():
 
     # BODY
     # Definiamo il Body della palla (oggetto fisico)
+    # DYNAMIC: soggetto alla gravità, interagisce con gli altri body
     mass = 1
     moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)
-    ball_body = pymunk.Body(mass, moment)
+    ball_body = pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)
     ball_body.position = (BASKET_CENTER[0], BALL_START_Y)
 
     # SHAPE
@@ -1140,6 +1174,9 @@ def create_ball():
     ball_shape.elasticity = 0.7
     ball_shape.friction = 0.5
     ball_shape.collision_type = COLLISION_TYPE_BALL
+    # mask: oggetti con cui interagire fisicamente
+    ball_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
+                                           mask=COLLISION_TYPE_BALL | COLLISION_TYPE_BASKET)
 
     # Aggiungo la palla allo spazio fisico
     space.add(ball_body, ball_shape)
@@ -1177,27 +1214,30 @@ target_rotation_angle = 0.0 # angolo attuale del canestro
 
 
 def on_ball_enter_basket(arbiter, space, data):
-    """Callback: la pallina ha toccato il sensore del canestro."""
-    
+    """Callback: la pallina ha toccato il canestro."""
+
     # Colore del canestro
     basket_top_color = COLORS[basket_top_color_index]
 
     global caught, missed
     if caught or missed:
         return True
-    
+
     if ball["color"] == basket_top_color:
         caught = True
+        # Modificando la maschera di collisione, la pallina non interagisce più con il canestro, attraversandolo
+        ball["shape"].filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
+                                                  mask=COLLISION_TYPE_BALL)
         ball["body"].velocity = (0, 80)   # rallenta la pallina
     else:
         missed = True
-        # Rimbalza la pallina lateralmente
+        # Applico una forza su x per far rimbalzare la pallina lateralmente
         direction = random.choice([-1, 1])
-        ball["body"].velocity = (direction * 600, random.randint(-350, -150))
+        ball["body"].apply_impulse_at_local_point((direction * 100, 0))
 
     return False
 
-space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET, 
+space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET,
                    begin=on_ball_enter_basket)
 
 
@@ -1226,7 +1266,7 @@ while running:
                 basket_top_color_index = (basket_top_color_index + 1) % 4
 
     screen.fill(DARK_BG)
-    
+
     # Aggiorno la fisica
     space.step(1 / FPS)
 
@@ -1359,13 +1399,15 @@ def create_ball():
 
     mass = 1
     moment = pymunk.moment_for_circle(mass, 0, radius)
-    ball_body = pymunk.Body(mass, moment)
+    ball_body = pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)
     ball_body.position = (BASKET_CENTER[0], BALL_START_Y)
 
     ball_shape = pymunk.Circle(ball_body, radius)
     ball_shape.elasticity = 0.7
     ball_shape.friction = 0.5
     ball_shape.collision_type = COLLISION_TYPE_BALL
+    ball_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
+                                           mask=COLLISION_TYPE_BALL | COLLISION_TYPE_BASKET)
 
     space.add(ball_body, ball_shape)
 
@@ -1401,11 +1443,14 @@ Nel callback `on_ball_enter_basket()`:
 if ball["color"] == basket_top_color:
     caught = True
     catch_sound.play()    # 🆕
+    ball["shape"].filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
+                                              mask=COLLISION_TYPE_BALL)
     ball["body"].velocity = (0, 80)
 else:
     missed = True
     miss_sound.play()     # 🆕
-    ...
+    direction = random.choice([-1, 1])
+    ball["body"].apply_impulse_at_local_point((direction * 100, 0))
 ```
 
 </details>
@@ -1442,9 +1487,9 @@ Modifica `reset_ball()` per gestire le vite:
 def reset_ball(ball):
     """Rimuove la pallina corrente e ne crea una nuova."""
     global caught, missed, lives, game_over
-    
-    # Se presenta anche la parte del punteggio, 
-    # score va aumentato se not game_over ... 
+
+    # Se presenta anche la parte del punteggio,
+    # score va aumentato se not game_over ...
 
     if not caught:
         lives -= 1
