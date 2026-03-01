@@ -78,7 +78,6 @@ def create_basket():
 
     # SHAPE
     # Definiamo la forma fisica
-    # La impostiamo come sensore per rilevare la collisione con la pallina
     basket_shape = pymunk.Circle(basket_body, BASKET_RADIUS)
     basket_shape.elasticity = 0.4
     basket_shape.collision_type = COLLISION_TYPE_BASKET
@@ -170,7 +169,7 @@ target_rotation_angle = 0.0 # angolo attuale del canestro
 
 
 def on_ball_enter_basket(arbiter, space, data):
-    """Callback: la pallina ha toccato il sensore del canestro."""
+    """Callback: la pallina ha toccato il canestro."""
     
     # Colore del canestro
     basket_top_color = COLORS[basket_top_color_index]
@@ -181,8 +180,7 @@ def on_ball_enter_basket(arbiter, space, data):
     
     if ball["color"] == basket_top_color:
         caught = True
-        # Attivando la pallina come sensor, non interagisce più con il canestro, attraversandolo
-        #ball["shape"].sensor = True 
+        # Modificando la maschera di collisione, la pallina non interagisce più con il canestro, attraversandolo
         ball["shape"].filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BALL,
                                                   mask=COLLISION_TYPE_BALL)
         ball["body"].velocity = (0, 80)   # rallenta la pallina
