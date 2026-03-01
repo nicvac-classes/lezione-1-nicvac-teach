@@ -32,7 +32,7 @@ BASKET_ROTATION_STEP = math.pi / 20  # rad/frame – Quanto deve ruotare per ogn
 
 # Gestione delle Collisioni
 # Uso la notazione binaria per comodità gestione collisioni
-COLLISION_TYPE_BALL   = 0b01  
+COLLISION_TYPE_BALL = 0b01
 COLLISION_TYPE_BASKET = 0b10
 
 # ============================================================
@@ -70,10 +70,10 @@ def create_basket():
     # Interno del canestro
     pygame.draw.circle(basket_surface, DARK_BG, center, BASKET_RADIUS - 8)
 
-    # BODY 
+    # BODY
     # Definiamo il Body del canestro (oggetto fisico)
     # KINEMATIC: non soggetto alla gravità, interagisce con gli altri body
-    basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC) 
+    basket_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
     basket_body.position = BASKET_CENTER
 
     # SHAPE
@@ -82,7 +82,7 @@ def create_basket():
     basket_shape.elasticity = 0.4
     basket_shape.collision_type = COLLISION_TYPE_BASKET
     # mask: oggetti con cui interagire fisicamente
-    basket_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BASKET, 
+    basket_shape.filter = pymunk.ShapeFilter(categories=COLLISION_TYPE_BASKET,
                                              mask=COLLISION_TYPE_BALL)
 
     # Aggiungo il canestro allo spazio fisico
@@ -116,10 +116,10 @@ def create_ball():
     pygame.draw.circle(ball_surface, color, center, BALL_RADIUS)
 
     # BODY
-    # Definiamo il Body del canestro (oggetto fisico)
+    # Definiamo il Body della palla (oggetto fisico)
+    # DYNAMIC: soggetto alla gravità, interagisce con gli altri body
     mass = 1
     moment = pymunk.moment_for_circle(mass, 0, BALL_RADIUS)
-    # DYNAMIC: soggetto alla gravità, interagisce con gli altri body
     ball_body = pymunk.Body(mass, moment, body_type=pymunk.Body.DYNAMIC)
     ball_body.position = (BASKET_CENTER[0], BALL_START_Y)
 
@@ -162,7 +162,7 @@ def reset_ball(ball):
 # ============================================================
 # COLLISION HANDLER
 # ============================================================
-caught = False # La palla entra nel canetro
+caught = False # La palla entra nel canestro
 missed = False # La palla non entra nel canestro
 basket_top_color_index = 0  # indice del colore in alto al canestro
 target_rotation_angle = 0.0 # angolo attuale del canestro
@@ -170,14 +170,14 @@ target_rotation_angle = 0.0 # angolo attuale del canestro
 
 def on_ball_enter_basket(arbiter, space, data):
     """Callback: la pallina ha toccato il canestro."""
-    
+
     # Colore del canestro
     basket_top_color = COLORS[basket_top_color_index]
 
     global caught, missed
     if caught or missed:
         return True
-    
+
     if ball["color"] == basket_top_color:
         caught = True
         # Modificando la maschera di collisione, la pallina non interagisce più con il canestro, attraversandolo
@@ -192,7 +192,7 @@ def on_ball_enter_basket(arbiter, space, data):
 
     return False
 
-space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET, 
+space.on_collision(COLLISION_TYPE_BALL, COLLISION_TYPE_BASKET,
                    begin=on_ball_enter_basket)
 
 
@@ -221,7 +221,7 @@ while running:
                 basket_top_color_index = (basket_top_color_index + 1) % 4
 
     screen.fill(DARK_BG)
-    
+
     # Aggiorno la fisica
     space.step(1 / FPS)
 
