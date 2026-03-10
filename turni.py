@@ -33,18 +33,23 @@ while giorno < K:
     
     miglior_fine = -1
 
-    # Cerco la persona che ha inizio turno <= giorno coperto
+    # Raccolgo tutte persone che hanno inizio turno <= giorno coperto
+    persone_da_scegliere = []
     while i < N:
         persona = persone[i]
         if persona[0] <= giorno:
             # Fra le persone con inizio turno compatibile, 
-            # seleziono quella con la fine turno più lontano possibile
-            miglior_fine = max( miglior_fine, persona[1] )
+            persone_da_scegliere.append( persona )
+            i += 1
         else:
             # interrompo la ricerca se non ci sono altre persone che 
             # coprono il giorno richiesto
             break 
-        i += 1
+
+    # fra tutte le persone con giorno inizio compatibile,
+    # seleziono quella con la fine turno più lontano possibile
+    for pers in persone_da_scegliere:
+        miglior_fine = max( miglior_fine, pers[1] )
 
     risposta += 1 # Ho trovato un'altra persona (la migliore disponibile)
 
