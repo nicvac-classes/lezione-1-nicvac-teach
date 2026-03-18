@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il Grafo — Dal problema "Ponti"</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FAFAF8;
+  --bg2: #F1F0EC;
+  --bg3: #E8E7E2;
+  --text: #2C2C2A;
+  --text2: #5F5E5A;
+  --text3: #888780;
+  --accent: #534AB7;
+  --accent-light: #EEEDFE;
+  --accent2: #0F6E56;
+  --accent2-light: #E1F5EE;
+  --blue: #378ADD;
+  --blue-light: #E6F1FB;
+  --blue-fill: #85B7EB;
+  --green: #1D9E75;
+  --green-light: #E1F5EE;
+  --green-fill: #5DCAA5;
+  --amber: #BA7517;
+  --amber-light: #FAEEDA;
+  --amber-fill: #FAC775;
+  --coral: #D85A30;
+  --coral-light: #FAECE7;
+  --purple: #7F77DD;
+  --purple-light: #EEEDFE;
+  --border: rgba(0,0,0,0.1);
+  --border2: rgba(0,0,0,0.06);
+  --code-bg: #2C2C2A;
+  --code-text: #E8E7E2;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --sans: 'DM Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1A1A18;
+    --bg2: #2C2C2A;
+    --bg3: #3D3D3A;
+    --text: #E8E7E2;
+    --text2: #B4B2A9;
+    --text3: #888780;
+    --accent: #AFA9EC;
+    --accent-light: #26215C;
+    --accent2: #5DCAA5;
+    --accent2-light: #04342C;
+    --blue: #85B7EB;
+    --blue-light: #042C53;
+    --blue-fill: #378ADD;
+    --green: #5DCAA5;
+    --green-light: #04342C;
+    --green-fill: #0F6E56;
+    --amber: #FAC775;
+    --amber-light: #412402;
+    --amber-fill: #854F0B;
+    --coral: #F0997B;
+    --coral-light: #4A1B0C;
+    --purple: #AFA9EC;
+    --purple-light: #26215C;
+    --border: rgba(255,255,255,0.12);
+    --border2: rgba(255,255,255,0.06);
+    --code-bg: #0F0F0E;
+    --code-text: #D3D1C7;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 17px; scroll-behavior: smooth; }
+body {
+  font-family: var(--serif);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  padding: 2rem 1.5rem 4rem;
+  max-width: 780px;
+  margin: 0 auto;
+}
+h1 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+  color: var(--text);
+}
+.subtitle {
+  font-family: var(--sans);
+  font-size: 1rem;
+  color: var(--text3);
+  margin-bottom: 2.5rem;
+}
+h2 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin-top: 2.8rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--border);
+}
+h3 {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 1.05rem;
+  margin-top: 1.8rem;
+  margin-bottom: 0.6rem;
+  color: var(--text2);
+}
+p { margin-bottom: 1rem; }
+strong { font-weight: 600; }
+.note {
+  background: var(--accent-light);
+  border-left: 3px solid var(--accent);
+  padding: 0.8rem 1rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1.2rem 0;
+  font-size: 0.95rem;
+}
+.note strong { color: var(--accent); }
+code {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  background: var(--bg2);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: 10px;
+  padding: 1.2rem 1.4rem;
+  overflow-x: auto;
+  margin: 1.2rem 0;
+  line-height: 1.6;
+  font-size: 0.82rem;
+}
+pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.kw { color: #C792EA; }
+.fn { color: #82AAFF; }
+.str { color: #C3E88D; }
+.cm { color: #6A6A5F; font-style: italic; }
+.num { color: #F78C6C; }
+.op { color: #89DDFF; }
+
+.figure {
+  margin: 1.5rem 0;
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 1.2rem;
+  border: 1px solid var(--border2);
+}
+.figure svg { display: block; }
+.figure-caption {
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--text3);
+  text-align: center;
+  margin-top: 0.6rem;
+}
+
+.adj-table {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  margin: 1rem 0;
+  line-height: 1.8;
+}
+.adj-table .node-key { color: var(--accent); font-weight: 500; }
+.adj-table .arrow { color: var(--text3); }
+
+/* BFS Interactive */
+.bfs-container {
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 1.2rem;
+  border: 1px solid var(--border2);
+  margin: 1.5rem 0;
+}
+.bfs-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.step-btn {
+  font-family: var(--sans);
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+.step-btn:hover { background: var(--bg3); }
+.step-btn:disabled { opacity: 0.35; cursor: default; }
+.step-counter {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--text3);
+}
+.bfs-state {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 8px 0;
+}
+.bfs-state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.state-label {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  color: var(--text3);
+  min-width: 95px;
+}
+.state-box {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+.step-info {
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--text2);
+  line-height: 1.6;
+  min-height: 40px;
+  margin-top: 6px;
+}
+.step-info strong { color: var(--text); }
+
+.solution-toggle {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  padding: 10px 18px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-light);
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-block;
+  margin: 1rem 0;
+}
+.solution-toggle:hover { background: var(--accent); color: white; }
+.solution-code { display: none; }
+.solution-code.visible { display: block; }
+
+/* SVG text */
+.svg-label { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; fill: var(--text); }
+.svg-label-s { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 400; fill: var(--text2); }
+.svg-label-node { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Il Grafo</h1>
+<p class="subtitle">Dal problema "Ponti" alla BFS — Lezione di informatica</p>
+
+<!-- ==================== SEZIONE 1 ==================== -->
+<h2>1. Il problema</h2>
+
+<p>Dopo pesanti piogge, molte strade di un territorio sono diventate inagibili. Alcune città sono rimaste isolate: non è più vero che <em>"da ogni città si può raggiungere ogni altra città"</em>. Dobbiamo trovare il <strong>numero minimo di nuove strade</strong> da costruire per ricollegare tutto il territorio.</p>
+
+<p>Ci vengono dati:</p>
+<p>— <strong>N</strong> città (numerate da 0 a N−1)<br>
+— <strong>M</strong> strade ancora agibili, ciascuna descritta come una coppia di città collegate</p>
+
+<p>Vediamo un esempio: 8 città e 5 strade agibili: (0,1), (1,2), (2,3), (0,3), (3,4), (5,6).</p>
+
+<div class="figure">
+<svg width="100%" viewBox="0 0 680 440" xmlns="http://www.w3.org/2000/svg">
+  <!-- Componente connessa 1 -->
+  <rect x="30" y="30" width="370" height="380" rx="16" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="0.5" stroke-dasharray="6 4" opacity="0.5"/>
+  <text class="svg-label-s" x="215" y="58" text-anchor="middle" fill="var(--blue)">Componente connessa 1</text>
+  <!-- Archi comp 1 -->
+  <line x1="150" y1="130" x2="270" y2="130" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="310" y1="160" x2="326" y2="230" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="300" y1="260" x2="220" y2="260" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="172" y1="286" x2="134" y2="344" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="136" y1="156" x2="174" y2="234" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Nodi comp 1 -->
+  <circle cx="120" cy="130" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="120" y="130" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">0</text>
+  <circle cx="300" cy="130" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="300" y="130" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">1</text>
+  <circle cx="330" cy="260" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="330" y="260" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">2</text>
+  <circle cx="190" cy="260" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="190" y="260" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">3</text>
+  <circle cx="120" cy="370" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="120" y="370" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">4</text>
+
+  <!-- Componente connessa 2 -->
+  <rect x="440" y="30" width="210" height="200" rx="16" fill="var(--green-light)" stroke="var(--green)" stroke-width="0.5" stroke-dasharray="6 4" opacity="0.5"/>
+  <text class="svg-label-s" x="545" y="58" text-anchor="middle" fill="var(--green)">Componente connessa 2</text>
+  <line x1="530" y1="150" x2="570" y2="150" stroke="var(--green-fill)" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="500" cy="150" r="30" fill="var(--green-light)" stroke="var(--green)" stroke-width="1"/><text class="svg-label-node" x="500" y="150" text-anchor="middle" dominant-baseline="central" fill="var(--green)">5</text>
+  <circle cx="600" cy="150" r="30" fill="var(--green-light)" stroke="var(--green)" stroke-width="1"/><text class="svg-label-node" x="600" y="150" text-anchor="middle" dominant-baseline="central" fill="var(--green)">6</text>
+
+  <!-- Componente connessa 3 -->
+  <rect x="480" y="280" width="130" height="130" rx="16" fill="var(--amber-light)" stroke="var(--amber)" stroke-width="0.5" stroke-dasharray="6 4" opacity="0.5"/>
+  <text class="svg-label-s" x="545" y="308" text-anchor="middle" fill="var(--amber)">Componente connessa 3</text>
+  <circle cx="545" cy="365" r="30" fill="var(--amber-light)" stroke="var(--amber)" stroke-width="1"/><text class="svg-label-node" x="545" y="365" text-anchor="middle" dominant-baseline="central" fill="var(--amber)">7</text>
+
+  <text class="svg-label-s" x="215" y="430" text-anchor="middle">N = 8 città, M = 5 strade agibili</text>
+  <text class="svg-label" x="540" y="430" text-anchor="middle">Strade da costruire = 3 − 1 = 2</text>
+</svg>
+<div class="figure-caption">Figura 1 — Il grafo dell'esempio con le 3 componenti connesse evidenziate</div>
+</div>
+
+<!-- ==================== SEZIONE 2 ==================== -->
+<h2>2. Dal problema al modello: il Grafo</h2>
+
+<p>Guardiamo la figura. Abbiamo rappresentato ogni <strong>città</strong> come un cerchio numerato e ogni <strong>strada</strong> come una linea che collega due cerchi. Questa struttura ha un nome in informatica e in matematica: si chiama <strong>grafo</strong>.</p>
+
+<p>Un grafo è composto da:</p>
+<p>— un insieme di <strong>nodi</strong> (o <strong>vertici</strong>) — nel nostro caso le città<br>
+— un insieme di <strong>archi</strong> (o <strong>spigoli</strong>) — nel nostro caso le strade</p>
+
+<p>Ogni arco collega esattamente due nodi. Si scrive come una coppia: l'arco tra la città 0 e la città 3 si indica come <strong>(0, 3)</strong>.</p>
+
+<p>Il nostro esempio è un <strong>grafo non orientato</strong>: se esiste una strada da 0 a 3, allora esiste anche da 3 a 0. L'arco (0, 3) è lo stesso di (3, 0). Esistono anche <strong>grafi orientati</strong>, dove gli archi hanno una direzione — ad esempio se le strade fossero a senso unico: la strada dal nodo 3 al nodo 0 significherebbe che da 3 posso andare a 0, ma non viceversa. Nel problema Ponti le strade sono sempre a doppio senso.</p>
+
+<h3>Terminologia essenziale</h3>
+
+<p><strong>Grado di un nodo:</strong> il numero di archi che partono da quel nodo. Nel nostro esempio, il nodo 3 ha grado 3 (è collegato a 0, 2 e 4), mentre il nodo 7 ha grado 0 (è isolato).</p>
+
+<p><strong>Cammino:</strong> una sequenza di nodi collegati da archi. Ad esempio 0 → 1 → 2 → 3 è un cammino da 0 a 3.</p>
+
+<p><strong>Ciclo:</strong> un cammino che torna al punto di partenza. Nel nostro grafo, 0 → 1 → 2 → 3 → 0 è un ciclo.</p>
+
+<p><strong>Grafo connesso:</strong> un grafo in cui esiste un cammino tra ogni coppia di nodi. La componente 1 da sola è un grafo connesso. Il grafo completo del nostro esempio <strong>non</strong> è connesso.</p>
+
+<div class="figure">
+<svg width="100%" viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Archi normali grigi -->
+  <line x1="310" y1="135" x2="326" y2="205" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="172" y1="261" x2="134" y2="319" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Ciclo evidenziato -->
+  <line x1="150" y1="105" x2="270" y2="105" stroke="var(--purple)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="310" y1="135" x2="326" y2="205" stroke="var(--purple)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="300" y1="235" x2="220" y2="235" stroke="var(--purple)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="174" y1="209" x2="136" y2="131" stroke="var(--purple)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Nodo 0 -->
+  <circle cx="120" cy="105" r="30" fill="var(--purple-light)" stroke="var(--purple)" stroke-width="1"/>
+  <text class="svg-label-node" x="120" y="97" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">0</text>
+  <text class="svg-label-s" x="120" y="118" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">gr. 2</text>
+  <!-- Nodo 1 -->
+  <circle cx="300" cy="105" r="30" fill="var(--purple-light)" stroke="var(--purple)" stroke-width="1"/>
+  <text class="svg-label-node" x="300" y="97" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">1</text>
+  <text class="svg-label-s" x="300" y="118" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">gr. 2</text>
+  <!-- Nodo 2 -->
+  <circle cx="330" cy="235" r="30" fill="var(--purple-light)" stroke="var(--purple)" stroke-width="1"/>
+  <text class="svg-label-node" x="330" y="227" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">2</text>
+  <text class="svg-label-s" x="330" y="248" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">gr. 2</text>
+  <!-- Nodo 3 (hub) -->
+  <circle cx="190" cy="235" r="30" fill="var(--coral-light)" stroke="var(--coral)" stroke-width="1.5"/>
+  <text class="svg-label-node" x="190" y="227" text-anchor="middle" dominant-baseline="central" fill="var(--coral)">3</text>
+  <text class="svg-label-s" x="190" y="248" text-anchor="middle" dominant-baseline="central" fill="var(--coral)">gr. 3</text>
+  <!-- Nodo 4 -->
+  <circle cx="120" cy="345" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/>
+  <text class="svg-label-node" x="120" y="337" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">4</text>
+  <text class="svg-label-s" x="120" y="358" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">gr. 1</text>
+  <!-- Nodo 5 -->
+  <circle cx="490" cy="105" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/>
+  <text class="svg-label-node" x="490" y="97" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">5</text>
+  <text class="svg-label-s" x="490" y="118" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">gr. 1</text>
+  <!-- Nodo 6 -->
+  <circle cx="590" cy="105" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/>
+  <text class="svg-label-node" x="590" y="97" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">6</text>
+  <text class="svg-label-s" x="590" y="118" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">gr. 1</text>
+  <line x1="520" y1="105" x2="560" y2="105" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Nodo 7 -->
+  <circle cx="540" cy="280" r="30" fill="var(--amber-light)" stroke="var(--amber)" stroke-width="1"/>
+  <text class="svg-label-node" x="540" y="272" text-anchor="middle" dominant-baseline="central" fill="var(--amber)">7</text>
+  <text class="svg-label-s" x="540" y="293" text-anchor="middle" dominant-baseline="central" fill="var(--amber)">gr. 0</text>
+  <!-- Legenda -->
+  <line x1="400" y1="365" x2="435" y2="365" stroke="var(--purple)" stroke-width="3" stroke-linecap="round"/>
+  <text class="svg-label-s" x="443" y="369">Ciclo: 0 → 1 → 2 → 3 → 0</text>
+  <text class="svg-label-s" x="400" y="392">gr. = grado (numero di archi del nodo)</text>
+</svg>
+<div class="figure-caption">Figura 2 — Terminologia: grado dei nodi e ciclo evidenziato</div>
+</div>
+
+<!-- ==================== SEZIONE 3 ==================== -->
+<h2>3. Componenti connesse</h2>
+
+<p>Nel nostro esempio vediamo 3 <strong>componenti connesse</strong>: {0, 1, 2, 3, 4}, {5, 6} e {7}. Una componente connessa è un insieme di nodi (con i relativi archi) in cui da ogni nodo si può raggiungere ogni altro. Ogni componente, presa singolarmente, è un grafo connesso. Il grafo totale (tutti e 8 i nodi insieme) <strong>non</strong> è connesso, perché ad esempio non esiste un cammino dal nodo 0 al nodo 7.</p>
+
+<p>Ora possiamo rileggere il problema Ponti: il territorio è un grafo, e noi dobbiamo renderlo connesso aggiungendo il minor numero di strade possibile.</p>
+
+<p>L'intuizione chiave è semplice: se abbiamo <strong>K</strong> componenti connesse, ci servono esattamente <strong>K − 1</strong> nuove strade per collegarle tutte. Perché?</p>
+
+<p>— Con 1 componente → il grafo è già connesso → <strong>0</strong> strade<br>
+— Con 2 componenti → basta <strong>1</strong> strada tra un nodo qualsiasi della prima e un nodo qualsiasi della seconda<br>
+— Con 3 componenti → servono <strong>2</strong> strade<br>
+— In generale: con K componenti servono <strong>K − 1</strong> strade</p>
+
+<div class="note">
+<strong>Nota:</strong> non importa <em>quali</em> coppie di nodi scegliamo per le nuove strade. L'importante è che ogni nuova strada colleghi due componenti diverse. Ad esempio avremmo potuto collegare (4, 7) e (3, 6) e il risultato sarebbe stato lo stesso: 2 strade, grafo connesso.
+</div>
+
+<div class="figure">
+<svg width="100%" viewBox="0 0 680 440" xmlns="http://www.w3.org/2000/svg">
+  <!-- Archi esistenti -->
+  <line x1="150" y1="130" x2="270" y2="130" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="310" y1="160" x2="326" y2="230" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="300" y1="260" x2="220" y2="260" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="172" y1="286" x2="134" y2="344" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="136" y1="156" x2="174" y2="234" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="530" y1="150" x2="570" y2="150" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Nuove strade -->
+  <line x1="330" y1="130" x2="470" y2="150" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="8 5"/>
+  <line x1="600" y1="180" x2="560" y2="335" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="8 5"/>
+  <!-- Nodi tutti blu (ora connessi) -->
+  <circle cx="120" cy="130" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="120" y="130" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">0</text>
+  <circle cx="300" cy="130" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="300" y="130" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">1</text>
+  <circle cx="330" cy="260" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="330" y="260" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">2</text>
+  <circle cx="190" cy="260" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="190" y="260" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">3</text>
+  <circle cx="120" cy="370" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="120" y="370" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">4</text>
+  <circle cx="500" cy="150" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="500" y="150" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">5</text>
+  <circle cx="600" cy="150" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="600" y="150" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">6</text>
+  <circle cx="545" cy="365" r="30" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="545" y="365" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">7</text>
+  <!-- Legenda -->
+  <line x1="60" y1="425" x2="100" y2="425" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+  <text class="svg-label-s" x="108" y="429">Strade esistenti</text>
+  <line x1="300" y1="425" x2="340" y2="425" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="8 5"/>
+  <text class="svg-label-s" x="348" y="429">Nuove strade (1→5 e 6→7)</text>
+</svg>
+<div class="figure-caption">Figura 3 — Due nuove strade collegano le 3 componenti: il grafo è ora connesso</div>
+</div>
+
+<p>L'algoritmo di soluzione è quindi:</p>
+<p>1. Conta le componenti connesse K<br>
+2. Restituisci K − 1</p>
+
+<p>Resta da capire come rappresentare il grafo in memoria e come contare le componenti connesse.</p>
+
+<!-- ==================== SEZIONE 4 ==================== -->
+<h2>4. Rappresentazione in memoria: la lista di adiacenza</h2>
+
+<p>Per poter lavorare sul grafo con un programma, dobbiamo rappresentarlo in memoria. Il modo più pratico è la <strong>lista di adiacenza</strong>: per ogni nodo, teniamo una lista dei nodi a cui è collegato (i suoi <strong>vicini</strong>).</p>
+
+<p>Per il nostro esempio:</p>
+
+<div class="adj-table">
+<span class="node-key">0</span> <span class="arrow">→</span> [1, 3]<br>
+<span class="node-key">1</span> <span class="arrow">→</span> [0, 2]<br>
+<span class="node-key">2</span> <span class="arrow">→</span> [1, 3]<br>
+<span class="node-key">3</span> <span class="arrow">→</span> [0, 2, 4]<br>
+<span class="node-key">4</span> <span class="arrow">→</span> [3]<br>
+<span class="node-key">5</span> <span class="arrow">→</span> [6]<br>
+<span class="node-key">6</span> <span class="arrow">→</span> [5]<br>
+<span class="node-key">7</span> <span class="arrow">→</span> []<br>
+</div>
+
+<p>In Python, usiamo un <strong>dizionario di liste</strong>:</p>
+
+<pre><code>N, M = <span class="fn">map</span>(<span class="fn">int</span>, <span class="fn">input</span>().<span class="fn">split</span>())
+
+adj = {}
+<span class="kw">for</span> nodo <span class="kw">in</span> <span class="fn">range</span>(N):
+    adj[nodo] = []
+
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(M):
+    i, j = <span class="fn">map</span>(<span class="fn">int</span>, <span class="fn">input</span>().<span class="fn">split</span>())
+    adj[i].<span class="fn">append</span>(j)
+    adj[j].<span class="fn">append</span>(i)</code></pre>
+
+<p>Notiamo che ogni arco viene inserito <strong>due volte</strong>: sia nella lista di <code>i</code> che in quella di <code>j</code>. Questo perché nel nostro problema le strade sono a doppio senso di circolazione.</p>
+
+<p>Esistono però anche <strong>grafi orientati</strong>, dove gli archi hanno una direzione. Ad esempio, se le strade fossero a senso unico, la strada dal nodo 3 al nodo 0 significherebbe che da 3 posso andare a 0, ma non viceversa. In quel caso 0 sarebbe nella lista di adiacenza di 3, ma 3 <strong>non</strong> sarebbe nella lista di 0.</p>
+
+<!-- ==================== SEZIONE 5 ==================== -->
+<h2>5. Contare le componenti connesse con la BFS</h2>
+
+<p>Ci serve un modo per esplorare il grafo e contare quante componenti connesse ci sono. Usiamo la <strong>BFS</strong> (Breadth-First Search, visita in ampiezza).</p>
+
+<p>L'idea: partiamo da un nodo non ancora visitato e visitiamo tutti i nodi raggiungibili da lui. Ogni volta che dobbiamo ripartire da un nuovo nodo non visitato, significa che abbiamo trovato una nuova componente connessa.</p>
+
+<p>La BFS funziona così:</p>
+<p>1. Metti il nodo di partenza in una <strong>coda</strong> e segnalo come visitato<br>
+2. Finché la coda non è vuota:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;— Estrai il primo nodo dalla coda<br>
+&nbsp;&nbsp;&nbsp;&nbsp;— Per ogni suo vicino non ancora visitato: marcalo come visitato e aggiungilo alla coda</p>
+
+<p>Prova l'animazione interattiva qui sotto — premi <strong>Avanti</strong> per vedere la BFS passo dopo passo:</p>
+
+<div class="bfs-container" id="bfs-widget">
+  <div class="bfs-controls">
+    <button class="step-btn" id="prev-btn" onclick="prevStep()" disabled>← Indietro</button>
+    <span class="step-counter" id="step-counter">Passo 0 / 14</span>
+    <button class="step-btn" id="next-btn" onclick="nextStep()">Avanti →</button>
+  </div>
+  <svg width="100%" viewBox="0 0 680 310" xmlns="http://www.w3.org/2000/svg" id="bfs-svg">
+    <line id="e01" x1="135" y1="80" x2="235" y2="80" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="e12" x1="265" y1="105" x2="280" y2="160" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="e23" x1="270" y1="190" x2="195" y2="190" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="e03" x1="118" y1="108" x2="153" y2="168" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="e34" x1="150" y1="210" x2="110" y2="260" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="e56" x1="460" y1="80" x2="540" y2="80" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <g id="n0"><circle cx="105" cy="80" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="105" y="80" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">0</text></g>
+    <g id="n1"><circle cx="265" cy="80" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="265" y="80" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">1</text></g>
+    <g id="n2"><circle cx="295" cy="190" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="295" y="190" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">2</text></g>
+    <g id="n3"><circle cx="165" cy="190" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="165" y="190" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">3</text></g>
+    <g id="n4"><circle cx="90" cy="285" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="90" y="285" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">4</text></g>
+    <g id="n5"><circle cx="435" cy="80" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="435" y="80" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">5</text></g>
+    <g id="n6"><circle cx="565" cy="80" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="565" y="80" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">6</text></g>
+    <g id="n7"><circle cx="500" cy="220" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="500" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">7</text></g>
+  </svg>
+  <div class="bfs-state">
+    <div class="bfs-state-row"><span class="state-label">Coda:</span><span class="state-box" id="queue-display">[ ]</span></div>
+    <div class="bfs-state-row"><span class="state-label">Visitati:</span><span class="state-box" id="visited-display">[ ]</span></div>
+    <div class="bfs-state-row"><span class="state-label">Componenti:</span><span class="state-box" id="comp-display">0</span></div>
+  </div>
+  <div class="step-info" id="step-info">Premi <strong>Avanti</strong> per iniziare la BFS. Partiremo dal nodo 0.</div>
+</div>
+
+<p>Il codice Python della BFS per contare le componenti:</p>
+
+<pre><code><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">def</span> <span class="fn">conta_componenti</span>(adj):
+    visitati = []
+    componenti = <span class="num">0</span>
+
+    <span class="kw">for</span> nodo <span class="kw">in</span> adj:
+        <span class="kw">if</span> nodo <span class="kw">not in</span> visitati:
+            componenti += <span class="num">1</span>
+            coda = deque([nodo])
+            visitati.<span class="fn">append</span>(nodo)
+            <span class="kw">while</span> coda:
+                corrente = coda.<span class="fn">popleft</span>()
+                <span class="kw">for</span> vicino <span class="kw">in</span> adj[corrente]:
+                    <span class="kw">if</span> vicino <span class="kw">not in</span> visitati:
+                        visitati.<span class="fn">append</span>(vicino)
+                        coda.<span class="fn">append</span>(vicino)
+
+    <span class="kw">return</span> componenti</code></pre>
+
+<!-- ==================== SEZIONE 6 ==================== -->
+<h2>6. Soluzione completa</h2>
+
+<p>Mettiamo tutto insieme. Il programma legge da <code>input.txt</code> e scrive su <code>output.txt</code>:</p>
+
+<button class="solution-toggle" onclick="toggleSolution()">Mostra la soluzione</button>
+
+<div class="solution-code" id="solution-block">
+<pre><code><span class="kw">import</span> sys
+<span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="cm"># Per la sottoposizione di questo problema in piattaforma: ATTIVARE QUESTE DUE RIGHE!</span>
+sys.stdin = <span class="fn">open</span>(<span class="str">'input.txt'</span>)
+sys.stdout = <span class="fn">open</span>(<span class="str">'output.txt'</span>, <span class="str">'w'</span>)
+
+<span class="kw">def</span> <span class="fn">conta_componenti</span>(adj):
+    visitati = []
+    componenti = <span class="num">0</span>
+
+    <span class="kw">for</span> nodo <span class="kw">in</span> adj:
+        <span class="kw">if</span> nodo <span class="kw">not in</span> visitati:
+            componenti += <span class="num">1</span>
+            coda = deque([nodo])
+            visitati.<span class="fn">append</span>(nodo)
+            <span class="kw">while</span> coda:
+                corrente = coda.<span class="fn">popleft</span>()
+                <span class="kw">for</span> vicino <span class="kw">in</span> adj[corrente]:
+                    <span class="kw">if</span> vicino <span class="kw">not in</span> visitati:
+                        visitati.<span class="fn">append</span>(vicino)
+                        coda.<span class="fn">append</span>(vicino)
+
+    <span class="kw">return</span> componenti
+
+<span class="cm"># Lettura input</span>
+N, M = <span class="fn">map</span>(<span class="fn">int</span>, <span class="fn">input</span>().<span class="fn">split</span>())
+
+adj = {}
+<span class="kw">for</span> nodo <span class="kw">in</span> <span class="fn">range</span>(N):
+    adj[nodo] = []
+
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(M):
+    i, j = <span class="fn">map</span>(<span class="fn">int</span>, <span class="fn">input</span>().<span class="fn">split</span>())
+    adj[i].<span class="fn">append</span>(j)
+    adj[j].<span class="fn">append</span>(i)
+
+<span class="cm"># Calcolo e output</span>
+K = <span class="fn">conta_componenti</span>(adj)
+<span class="fn">print</span>(K - <span class="num">1</span>)</code></pre>
+</div>
+
+<script>
+function toggleSolution() {
+  var block = document.getElementById('solution-block');
+  var btn = document.querySelector('.solution-toggle');
+  if (block.classList.contains('visible')) {
+    block.classList.remove('visible');
+    btn.textContent = 'Mostra la soluzione';
+  } else {
+    block.classList.add('visible');
+    btn.textContent = 'Nascondi la soluzione';
+  }
+}
+
+/* BFS Animation */
+var VISITED_C='#1D9E75', VISITED_BG='#E1F5EE';
+var QUEUED_C='#7F77DD', QUEUED_BG='#EEEDFE';
+var ACTIVE_C='#534AB7', ACTIVE_BG='#AFA9EC';
+var EDGE_C='#1D9E75';
+var IDLE_BG='var(--bg2)', IDLE_S='var(--border)';
+
+var dm = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+if (dm) {
+  VISITED_C='#5DCAA5'; VISITED_BG='#085041';
+  QUEUED_C='#AFA9EC'; QUEUED_BG='#3C3489';
+  ACTIVE_C='#CECBF6'; ACTIVE_BG='#534AB7';
+  EDGE_C='#5DCAA5';
+}
+
+var steps=[
+{q:[],comp:0,active:null,visited:[],queued:[],edges:[],info:"Tutti i nodi sono non visitati. Partiamo dal nodo <strong>0</strong>."},
+{q:[0],comp:1,active:null,visited:[0],queued:[0],edges:[],info:"Componente <strong>1</strong>: inseriamo 0 nella coda e lo segniamo come visitato."},
+{q:[],comp:1,active:0,visited:[0],queued:[],edges:[],info:"Estraiamo <strong>0</strong> dalla coda. I suoi vicini sono: 1 e 3."},
+{q:[1,3],comp:1,active:0,visited:[0,1,3],queued:[1,3],edges:['e01','e03'],info:"1 e 3 non sono in visitati → li aggiungiamo alla coda e ai visitati."},
+{q:[3],comp:1,active:1,visited:[0,1,3],queued:[3],edges:['e01','e03'],info:"Estraiamo <strong>1</strong>. Vicini: 0 (già in visitati), 2 (nuovo)."},
+{q:[3,2],comp:1,active:1,visited:[0,1,3,2],queued:[3,2],edges:['e01','e03','e12'],info:"2 non è in visitati → lo aggiungiamo alla coda e ai visitati."},
+{q:[2],comp:1,active:3,visited:[0,1,3,2],queued:[2],edges:['e01','e03','e12','e23'],info:"Estraiamo <strong>3</strong>. Vicini: 0 (visitato), 2 (visitato), 4 (nuovo)."},
+{q:[2,4],comp:1,active:3,visited:[0,1,3,2,4],queued:[2,4],edges:['e01','e03','e12','e23','e34'],info:"4 non è in visitati → lo aggiungiamo alla coda e ai visitati."},
+{q:[4],comp:1,active:2,visited:[0,1,3,2,4],queued:[4],edges:['e01','e03','e12','e23','e34'],info:"Estraiamo <strong>2</strong>. Vicini: 1 (visitato), 3 (visitato). Nessun nuovo nodo."},
+{q:[],comp:1,active:4,visited:[0,1,3,2,4],queued:[],edges:['e01','e03','e12','e23','e34'],info:"Estraiamo <strong>4</strong>. Vicino: 3 (visitato). Coda vuota → componente 1 completata!"},
+{q:[5],comp:2,active:null,visited:[0,1,3,2,4,5],queued:[5],edges:['e01','e03','e12','e23','e34'],info:"Prossimo nodo non in visitati: <strong>5</strong>. Componente <strong>2</strong>! Lo aggiungiamo a coda e visitati."},
+{q:[6],comp:2,active:5,visited:[0,1,3,2,4,5,6],queued:[6],edges:['e01','e03','e12','e23','e34','e56'],info:"Estraiamo <strong>5</strong>. Vicino: 6 (nuovo) → in coda e visitati."},
+{q:[],comp:2,active:6,visited:[0,1,3,2,4,5,6],queued:[],edges:['e01','e03','e12','e23','e34','e56'],info:"Estraiamo <strong>6</strong>. Vicino: 5 (visitato). Coda vuota → componente 2 completata!"},
+{q:[7],comp:3,active:null,visited:[0,1,3,2,4,5,6,7],queued:[7],edges:['e01','e03','e12','e23','e34','e56'],info:"Prossimo non visitato: <strong>7</strong>. Componente <strong>3</strong>! Nodo isolato, nessun vicino."},
+{q:[],comp:3,active:7,visited:[0,1,3,2,4,5,6,7],queued:[],edges:['e01','e03','e12','e23','e34','e56'],info:"Estraiamo <strong>7</strong>. Nessun vicino. Tutti visitati. <strong>Risultato: 3 − 1 = 2 strade.</strong>"}
+];
+
+var cur=0;
+function render(){
+  var s=steps[cur];
+  document.getElementById('step-counter').textContent='Passo '+cur+' / '+(steps.length-1);
+  document.getElementById('prev-btn').disabled=cur===0;
+  document.getElementById('next-btn').disabled=cur===steps.length-1;
+  document.getElementById('queue-display').textContent='[ '+s.q.join(', ')+' ]';
+  document.getElementById('visited-display').textContent='[ '+s.visited.join(', ')+' ]';
+  document.getElementById('comp-display').textContent=s.comp;
+  document.getElementById('step-info').innerHTML=s.info;
+  for(var i=0;i<8;i++){
+    var c=document.querySelector('#n'+i+' circle');
+    var t=document.querySelector('#n'+i+' text');
+    if(s.active===i){c.setAttribute('fill',ACTIVE_BG);c.setAttribute('stroke',ACTIVE_C);t.setAttribute('fill',ACTIVE_C);}
+    else if(s.visited.includes(i)){c.setAttribute('fill',VISITED_BG);c.setAttribute('stroke',VISITED_C);t.setAttribute('fill',VISITED_C);}
+    else if(s.queued.includes(i)){c.setAttribute('fill',QUEUED_BG);c.setAttribute('stroke',QUEUED_C);t.setAttribute('fill',QUEUED_C);}
+    else{c.setAttribute('fill',IDLE_BG);c.setAttribute('stroke',IDLE_S);t.setAttribute('fill','var(--text2)');}
+  }
+  var allEdges=['e01','e12','e23','e03','e34','e56'];
+  allEdges.forEach(function(id){
+    var l=document.getElementById(id);
+    if(s.edges.includes(id)){l.setAttribute('stroke',EDGE_C);l.setAttribute('stroke-width','2.5');}
+    else{l.setAttribute('stroke','var(--border)');l.setAttribute('stroke-width','1.5');}
+  });
+}
+function nextStep(){if(cur<steps.length-1){cur++;render();}}
+function prevStep(){if(cur>0){cur--;render();}}
+render();
+</script>
+
+<!-- ==================== SEZIONE 7 ==================== -->
+<h2>7. Visitare un grafo</h2>
+
+<p>Nel punto 5 abbiamo usato la BFS per contare le componenti connesse. Per farlo abbiamo <strong>esplorato</strong> il grafo partendo da un nodo e raggiungendo tutti quelli collegati a lui. Questa operazione si chiama <strong>visita</strong> di un grafo.</p>
+
+<p>Il modo in cui scegliamo il <strong>prossimo nodo da esplorare</strong> definisce il tipo di visita. Vediamo le due strategie fondamentali.</p>
+
+<!-- ==================== SEZIONE 7.1 ==================== -->
+<h3>7.1 BFS — Visita in ampiezza</h3>
+
+<p>La BFS (Breadth-First Search) esplora il grafo <strong>a cerchi concentrici</strong>: prima visita tutti i vicini del nodo di partenza, poi tutti i vicini dei vicini, e così via. Per fare questo usa una <strong>coda</strong> (FIFO — First In, First Out): il primo nodo che entra nella coda è il primo a uscire.</p>
+
+<p>Usiamo un nuovo grafo per vedere bene la differenza tra BFS e DFS:</p>
+
+<div class="figure">
+<svg width="100%" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
+  <!-- Componente 1: archi -->
+  <line x1="200" y1="75" x2="130" y2="115" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="200" y1="75" x2="310" y2="115" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="130" y1="165" x2="80" y2="195" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="130" y1="165" x2="200" y2="195" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="310" y1="165" x2="360" y2="195" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="225" y1="210" x2="335" y2="210" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="80" y1="245" x2="80" y2="270" stroke="var(--blue-fill)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Componente 1: nodi -->
+  <circle cx="200" cy="50" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="200" y="50" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">0</text>
+  <circle cx="130" cy="140" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="130" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">1</text>
+  <circle cx="310" cy="140" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="310" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">2</text>
+  <circle cx="80" cy="220" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="80" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">3</text>
+  <circle cx="200" cy="210" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="200" y="210" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">4</text>
+  <circle cx="360" cy="210" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="360" y="210" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">5</text>
+  <circle cx="80" cy="295" r="26" fill="var(--blue-light)" stroke="var(--blue)" stroke-width="1"/><text class="svg-label-node" x="80" y="295" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">6</text>
+  <!-- Componente 2: archi -->
+  <line x1="530" y1="75" x2="530" y2="115" stroke="var(--green-fill)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="530" y1="165" x2="530" y2="195" stroke="var(--green-fill)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Componente 2: nodi -->
+  <circle cx="530" cy="50" r="26" fill="var(--green-light)" stroke="var(--green)" stroke-width="1"/><text class="svg-label-node" x="530" y="50" text-anchor="middle" dominant-baseline="central" fill="var(--green)">7</text>
+  <circle cx="530" cy="140" r="26" fill="var(--green-light)" stroke="var(--green)" stroke-width="1"/><text class="svg-label-node" x="530" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--green)">8</text>
+  <circle cx="530" cy="220" r="26" fill="var(--green-light)" stroke="var(--green)" stroke-width="1"/><text class="svg-label-node" x="530" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--green)">9</text>
+</svg>
+<div class="figure-caption">Figura 4 — Grafo con 10 nodi e 2 componenti connesse (usato per BFS e DFS)</div>
+</div>
+
+<p>Prova l'animazione — osserva come la coda gestisce l'ordine di visita:</p>
+
+<div class="bfs-container" id="bfs2-widget">
+  <div class="bfs-controls">
+    <button class="step-btn" id="bfs2-prev" onclick="bfs2Prev()" disabled>← Indietro</button>
+    <span class="step-counter" id="bfs2-counter">Passo 0 / 17</span>
+    <button class="step-btn" id="bfs2-next" onclick="bfs2Next()">Avanti →</button>
+  </div>
+  <svg width="100%" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
+    <line id="b2e01" x1="200" y1="75" x2="130" y2="115" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e02" x1="200" y1="75" x2="310" y2="115" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e13" x1="130" y1="165" x2="80" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e14" x1="130" y1="165" x2="200" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e25" x1="310" y1="165" x2="360" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e45" x1="225" y1="210" x2="335" y2="210" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e36" x1="80" y1="245" x2="80" y2="270" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e78" x1="530" y1="75" x2="530" y2="115" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="b2e89" x1="530" y1="165" x2="530" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <g id="b2n0"><circle cx="200" cy="50" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="200" y="50" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">0</text></g>
+    <g id="b2n1"><circle cx="130" cy="140" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="130" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">1</text></g>
+    <g id="b2n2"><circle cx="310" cy="140" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="310" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">2</text></g>
+    <g id="b2n3"><circle cx="80" cy="220" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="80" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">3</text></g>
+    <g id="b2n4"><circle cx="200" cy="210" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="200" y="210" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">4</text></g>
+    <g id="b2n5"><circle cx="360" cy="210" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="360" y="210" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">5</text></g>
+    <g id="b2n6"><circle cx="80" cy="295" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="80" y="295" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">6</text></g>
+    <g id="b2n7"><circle cx="530" cy="50" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="530" y="50" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">7</text></g>
+    <g id="b2n8"><circle cx="530" cy="140" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="530" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">8</text></g>
+    <g id="b2n9"><circle cx="530" cy="220" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="530" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">9</text></g>
+  </svg>
+  <div class="bfs-state">
+    <div class="bfs-state-row"><span class="state-label">Coda (FIFO):</span><span class="state-box" id="bfs2-queue">[ ]</span></div>
+    <div class="bfs-state-row"><span class="state-label">Visitati:</span><span class="state-box" id="bfs2-visited">[ ]</span></div>
+  </div>
+  <div class="step-info" id="bfs2-info">Premi <strong>Avanti</strong> per iniziare la BFS dal nodo 0.</div>
+</div>
+
+<p>Il codice Python della BFS come visita pura (senza conteggio componenti):</p>
+
+<pre><code><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">def</span> <span class="fn">bfs</span>(adj, partenza):
+    visitati = [partenza]
+    coda = deque([partenza])
+
+    <span class="kw">while</span> coda:
+        corrente = coda.<span class="fn">popleft</span>()  <span class="cm"># estrae il PRIMO elemento (FIFO)</span>
+        <span class="kw">for</span> vicino <span class="kw">in</span> adj[corrente]:
+            <span class="kw">if</span> vicino <span class="kw">not in</span> visitati:
+                visitati.<span class="fn">append</span>(vicino)
+                coda.<span class="fn">append</span>(vicino)
+
+    <span class="kw">return</span> visitati</code></pre>
+
+<p>Ordine di visita BFS dal nodo 0: <strong>0, 1, 2, 3, 4, 5, 6</strong> — prima i vicini diretti (1, 2), poi i vicini dei vicini (3, 4, 5), infine 6. La BFS esplora il grafo <strong>allargandosi</strong> dal punto di partenza.</p>
+
+<!-- ==================== SEZIONE 7.2 ==================== -->
+<h3>7.2 DFS — Visita in profondità</h3>
+
+<p>La DFS (Depth-First Search) esplora il grafo <strong>in profondità</strong>: segue un cammino il più lontano possibile prima di tornare indietro. Per fare questo usa una <strong>pila</strong> (LIFO — Last In, First Out): l'ultimo nodo inserito nella pila è il primo a uscire.</p>
+
+<p>Prova l'animazione sulla DFS — osserva come l'ordine di visita è diverso dalla BFS sullo <strong>stesso grafo</strong>:</p>
+
+<div class="bfs-container" id="dfs-widget">
+  <div class="bfs-controls">
+    <button class="step-btn" id="dfs-prev" onclick="dfsPrev()" disabled>← Indietro</button>
+    <span class="step-counter" id="dfs-counter">Passo 0 / 18</span>
+    <button class="step-btn" id="dfs-next" onclick="dfsNext()">Avanti →</button>
+  </div>
+  <svg width="100%" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
+    <line id="de01" x1="200" y1="75" x2="130" y2="115" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de02" x1="200" y1="75" x2="310" y2="115" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de13" x1="130" y1="165" x2="80" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de14" x1="130" y1="165" x2="200" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de25" x1="310" y1="165" x2="360" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de45" x1="225" y1="210" x2="335" y2="210" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de36" x1="80" y1="245" x2="80" y2="270" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de78" x1="530" y1="75" x2="530" y2="115" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <line id="de89" x1="530" y1="165" x2="530" y2="195" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round"/>
+    <g id="dn0"><circle cx="200" cy="50" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="200" y="50" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">0</text></g>
+    <g id="dn1"><circle cx="130" cy="140" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="130" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">1</text></g>
+    <g id="dn2"><circle cx="310" cy="140" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="310" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">2</text></g>
+    <g id="dn3"><circle cx="80" cy="220" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="80" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">3</text></g>
+    <g id="dn4"><circle cx="200" cy="210" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="200" y="210" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">4</text></g>
+    <g id="dn5"><circle cx="360" cy="210" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="360" y="210" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">5</text></g>
+    <g id="dn6"><circle cx="80" cy="295" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="80" y="295" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">6</text></g>
+    <g id="dn7"><circle cx="530" cy="50" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="530" y="50" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">7</text></g>
+    <g id="dn8"><circle cx="530" cy="140" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="530" y="140" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">8</text></g>
+    <g id="dn9"><circle cx="530" cy="220" r="26" fill="var(--bg2)" stroke="var(--border)" stroke-width="1"/><text class="svg-label-node" x="530" y="220" text-anchor="middle" dominant-baseline="central" fill="var(--text2)">9</text></g>
+  </svg>
+  <div class="bfs-state">
+    <div class="bfs-state-row"><span class="state-label">Pila (LIFO):</span><span class="state-box" id="dfs-stack">[ ]</span></div>
+    <div class="bfs-state-row"><span class="state-label">Visitati:</span><span class="state-box" id="dfs-visited">[ ]</span></div>
+  </div>
+  <div class="step-info" id="dfs-info">Premi <strong>Avanti</strong> per iniziare la DFS dal nodo 0.</div>
+</div>
+
+<p>Ordine di visita DFS dal nodo 0: <strong>0, 2, 5, 4, 1, 3, 6</strong> — scende subito verso 2→5→4, poi risale e scende verso 1→3→6. La DFS esplora il grafo <strong>andando in profondità</strong> prima di tornare indietro.</p>
+
+<p>Ed ecco il punto chiave: il codice della DFS è <strong>identico</strong> alla BFS. L'unica differenza è che usiamo <code>pop()</code> al posto di <code>popleft()</code>:</p>
+
+<pre><code><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">def</span> <span class="fn">dfs</span>(adj, partenza):
+    visitati = [partenza]
+    pila = deque([partenza])
+
+    <span class="kw">while</span> pila:
+        corrente = pila.<span class="fn">pop</span>()       <span class="cm"># estrae l'ULTIMO elemento (LIFO)</span>
+        <span class="kw">for</span> vicino <span class="kw">in</span> adj[corrente]:
+            <span class="kw">if</span> vicino <span class="kw">not in</span> visitati:
+                visitati.<span class="fn">append</span>(vicino)
+                pila.<span class="fn">append</span>(vicino)
+
+    <span class="kw">return</span> visitati</code></pre>
+
+<div class="note">
+<strong>Da notare:</strong> la struttura del codice è identica. Cambia solo una riga:<br>
+— BFS: <code>coda.popleft()</code> → estrae il <strong>primo</strong> elemento (FIFO)<br>
+— DFS: <code>pila.pop()</code> → estrae l'<strong>ultimo</strong> elemento (LIFO)<br><br>
+È la struttura dati (coda vs pila) che determina il comportamento della visita.
+</div>
+
+<script>
+/* ===== BFS 7.1 Animation (10 nodes) ===== */
+var bfs2Steps=[
+{q:[],active:null,visited:[],queued:[],edges:[],info:"Premi <strong>Avanti</strong> per iniziare la BFS dal nodo 0."},
+{q:[0],active:null,visited:[0],queued:[0],edges:[],info:"Inseriamo 0 nella coda e lo segniamo come visitato."},
+{q:[],active:0,visited:[0],queued:[],edges:[],info:"Estraiamo <strong>0</strong> dalla coda (primo elemento). Vicini: 1 e 2."},
+{q:[1,2],active:0,visited:[0,1,2],queued:[1,2],edges:['b2e01','b2e02'],info:"1 e 2 non sono in visitati → li aggiungiamo alla coda e ai visitati."},
+{q:[2],active:1,visited:[0,1,2],queued:[2],edges:['b2e01','b2e02'],info:"Estraiamo <strong>1</strong> (primo della coda). Vicini: 0 (visitato), 3 (nuovo), 4 (nuovo)."},
+{q:[2,3,4],active:1,visited:[0,1,2,3,4],queued:[2,3,4],edges:['b2e01','b2e02','b2e13','b2e14'],info:"3 e 4 non sono in visitati → li aggiungiamo."},
+{q:[3,4],active:2,visited:[0,1,2,3,4],queued:[3,4],edges:['b2e01','b2e02','b2e13','b2e14'],info:"Estraiamo <strong>2</strong> (primo della coda). Vicini: 0 (visitato), 5 (nuovo)."},
+{q:[3,4,5],active:2,visited:[0,1,2,3,4,5],queued:[3,4,5],edges:['b2e01','b2e02','b2e13','b2e14','b2e25'],info:"5 non è in visitati → lo aggiungiamo."},
+{q:[4,5],active:3,visited:[0,1,2,3,4,5],queued:[4,5],edges:['b2e01','b2e02','b2e13','b2e14','b2e25'],info:"Estraiamo <strong>3</strong>. Vicini: 1 (visitato), 6 (nuovo)."},
+{q:[4,5,6],active:3,visited:[0,1,2,3,4,5,6],queued:[4,5,6],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36'],info:"6 non è in visitati → lo aggiungiamo."},
+{q:[5,6],active:4,visited:[0,1,2,3,4,5,6],queued:[5,6],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45'],info:"Estraiamo <strong>4</strong>. Vicini: 1 (visitato), 5 (visitato). Nessun nuovo nodo."},
+{q:[6],active:5,visited:[0,1,2,3,4,5,6],queued:[6],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45'],info:"Estraiamo <strong>5</strong>. Vicini: 2 (visitato), 4 (visitato). Nessun nuovo nodo."},
+{q:[],active:6,visited:[0,1,2,3,4,5,6],queued:[],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45'],info:"Estraiamo <strong>6</strong>. Vicino: 3 (visitato). Coda vuota → prima componente completata!"},
+{q:[7],active:null,visited:[0,1,2,3,4,5,6,7],queued:[7],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45'],info:"Prossimo nodo non in visitati: <strong>7</strong>. Nuova componente!"},
+{q:[8],active:7,visited:[0,1,2,3,4,5,6,7,8],queued:[8],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45','b2e78'],info:"Estraiamo <strong>7</strong>. Vicino: 8 (nuovo) → in coda e visitati."},
+{q:[9],active:8,visited:[0,1,2,3,4,5,6,7,8,9],queued:[9],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45','b2e78','b2e89'],info:"Estraiamo <strong>8</strong>. Vicini: 7 (visitato), 9 (nuovo) → aggiungiamo 9."},
+{q:[],active:9,visited:[0,1,2,3,4,5,6,7,8,9],queued:[],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45','b2e78','b2e89'],info:"Estraiamo <strong>9</strong>. Vicino: 8 (visitato). Coda vuota → seconda componente completata!"},
+{q:[],active:null,visited:[0,1,2,3,4,5,6,7,8,9],queued:[],edges:['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45','b2e78','b2e89'],info:"Tutti i nodi visitati. <strong>Ordine BFS: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9</strong>"}
+];
+var bfs2Cur=0;
+function bfs2Render(){
+  var s=bfs2Steps[bfs2Cur];
+  document.getElementById('bfs2-counter').textContent='Passo '+bfs2Cur+' / '+(bfs2Steps.length-1);
+  document.getElementById('bfs2-prev').disabled=bfs2Cur===0;
+  document.getElementById('bfs2-next').disabled=bfs2Cur===bfs2Steps.length-1;
+  document.getElementById('bfs2-queue').textContent='[ '+s.q.join(', ')+' ]';
+  document.getElementById('bfs2-visited').textContent='[ '+s.visited.join(', ')+' ]';
+  document.getElementById('bfs2-info').innerHTML=s.info;
+  for(var i=0;i<10;i++){
+    var c=document.querySelector('#b2n'+i+' circle');
+    var t=document.querySelector('#b2n'+i+' text');
+    if(!c)continue;
+    if(s.active===i){c.setAttribute('fill',ACTIVE_BG);c.setAttribute('stroke',ACTIVE_C);t.setAttribute('fill',ACTIVE_C);}
+    else if(s.visited.includes(i)){c.setAttribute('fill',VISITED_BG);c.setAttribute('stroke',VISITED_C);t.setAttribute('fill',VISITED_C);}
+    else if(s.queued.includes(i)){c.setAttribute('fill',QUEUED_BG);c.setAttribute('stroke',QUEUED_C);t.setAttribute('fill',QUEUED_C);}
+    else{c.setAttribute('fill',IDLE_BG);c.setAttribute('stroke',IDLE_S);t.setAttribute('fill','var(--text2)');}
+  }
+  var allE=['b2e01','b2e02','b2e13','b2e14','b2e25','b2e36','b2e45','b2e78','b2e89'];
+  allE.forEach(function(id){
+    var l=document.getElementById(id);
+    if(s.edges.includes(id)){l.setAttribute('stroke',EDGE_C);l.setAttribute('stroke-width','2.5');}
+    else{l.setAttribute('stroke','var(--border)');l.setAttribute('stroke-width','1.5');}
+  });
+}
+function bfs2Next(){if(bfs2Cur<bfs2Steps.length-1){bfs2Cur++;bfs2Render();}}
+function bfs2Prev(){if(bfs2Cur>0){bfs2Cur--;bfs2Render();}}
+bfs2Render();
+
+/* ===== DFS 7.2 Animation (10 nodes) ===== */
+var dfsSteps=[
+{q:[],active:null,visited:[],queued:[],edges:[],info:"Premi <strong>Avanti</strong> per iniziare la DFS dal nodo 0."},
+{q:[0],active:null,visited:[0],queued:[0],edges:[],info:"Inseriamo 0 nella pila e lo segniamo come visitato."},
+{q:[],active:0,visited:[0],queued:[],edges:[],info:"Estraiamo <strong>0</strong> dalla pila (ultimo elemento). Vicini: 1 e 2."},
+{q:[1,2],active:0,visited:[0,1,2],queued:[1,2],edges:['de01','de02'],info:"1 e 2 non sono in visitati → li aggiungiamo alla pila e ai visitati."},
+{q:[1],active:2,visited:[0,1,2],queued:[1],edges:['de01','de02'],info:"Estraiamo <strong>2</strong> (ultimo della pila!). Vicini: 0 (visitato), 5 (nuovo)."},
+{q:[1,5],active:2,visited:[0,1,2,5],queued:[1,5],edges:['de01','de02','de25'],info:"5 non è in visitati → lo aggiungiamo alla pila."},
+{q:[1],active:5,visited:[0,1,2,5],queued:[1],edges:['de01','de02','de25'],info:"Estraiamo <strong>5</strong> (ultimo della pila). Vicini: 2 (visitato), 4 (nuovo)."},
+{q:[1,4],active:5,visited:[0,1,2,5,4],queued:[1,4],edges:['de01','de02','de25','de45'],info:"4 non è in visitati → lo aggiungiamo alla pila."},
+{q:[1],active:4,visited:[0,1,2,5,4],queued:[1],edges:['de01','de02','de25','de45','de14'],info:"Estraiamo <strong>4</strong> (ultimo della pila). Vicini: 1 (visitato), 5 (visitato). Nessun nuovo nodo."},
+{q:[],active:1,visited:[0,1,2,5,4],queued:[],edges:['de01','de02','de25','de45','de14'],info:"Estraiamo <strong>1</strong> (ultimo della pila). Vicini: 0 (visitato), 3 (nuovo), 4 (visitato)."},
+{q:[3],active:1,visited:[0,1,2,5,4,3],queued:[3],edges:['de01','de02','de25','de45','de14','de13'],info:"3 non è in visitati → lo aggiungiamo alla pila."},
+{q:[],active:3,visited:[0,1,2,5,4,3],queued:[],edges:['de01','de02','de25','de45','de14','de13'],info:"Estraiamo <strong>3</strong> (ultimo della pila). Vicini: 1 (visitato), 6 (nuovo)."},
+{q:[6],active:3,visited:[0,1,2,5,4,3,6],queued:[6],edges:['de01','de02','de25','de45','de14','de13','de36'],info:"6 non è in visitati → lo aggiungiamo alla pila."},
+{q:[],active:6,visited:[0,1,2,5,4,3,6],queued:[],edges:['de01','de02','de25','de45','de14','de13','de36'],info:"Estraiamo <strong>6</strong>. Vicino: 3 (visitato). Pila vuota → prima componente completata!"},
+{q:[7],active:null,visited:[0,1,2,5,4,3,6,7],queued:[7],edges:['de01','de02','de25','de45','de14','de13','de36'],info:"Prossimo non visitato: <strong>7</strong>. Nuova componente!"},
+{q:[8],active:7,visited:[0,1,2,5,4,3,6,7,8],queued:[8],edges:['de01','de02','de25','de45','de14','de13','de36','de78'],info:"Estraiamo <strong>7</strong>. Vicino: 8 (nuovo) → in pila e visitati."},
+{q:[9],active:8,visited:[0,1,2,5,4,3,6,7,8,9],queued:[9],edges:['de01','de02','de25','de45','de14','de13','de36','de78','de89'],info:"Estraiamo <strong>8</strong>. Vicini: 7 (visitato), 9 (nuovo) → aggiungiamo 9."},
+{q:[],active:9,visited:[0,1,2,5,4,3,6,7,8,9],queued:[],edges:['de01','de02','de25','de45','de14','de13','de36','de78','de89'],info:"Estraiamo <strong>9</strong>. Vicino: 8 (visitato). Pila vuota → seconda componente completata!"},
+{q:[],active:null,visited:[0,1,2,5,4,3,6,7,8,9],queued:[],edges:['de01','de02','de25','de45','de14','de13','de36','de78','de89'],info:"Tutti i nodi visitati. <strong>Ordine DFS: 0, 2, 5, 4, 1, 3, 6, 7, 8, 9</strong>"}
+];
+var dfsCur=0;
+function dfsRender(){
+  var s=dfsSteps[dfsCur];
+  document.getElementById('dfs-counter').textContent='Passo '+dfsCur+' / '+(dfsSteps.length-1);
+  document.getElementById('dfs-prev').disabled=dfsCur===0;
+  document.getElementById('dfs-next').disabled=dfsCur===dfsSteps.length-1;
+  document.getElementById('dfs-stack').textContent='[ '+s.q.join(', ')+' ]';
+  document.getElementById('dfs-visited').textContent='[ '+s.visited.join(', ')+' ]';
+  document.getElementById('dfs-info').innerHTML=s.info;
+  for(var i=0;i<10;i++){
+    var c=document.querySelector('#dn'+i+' circle');
+    var t=document.querySelector('#dn'+i+' text');
+    if(!c)continue;
+    if(s.active===i){c.setAttribute('fill',ACTIVE_BG);c.setAttribute('stroke',ACTIVE_C);t.setAttribute('fill',ACTIVE_C);}
+    else if(s.visited.includes(i)){c.setAttribute('fill',VISITED_BG);c.setAttribute('stroke',VISITED_C);t.setAttribute('fill',VISITED_C);}
+    else if(s.queued.includes(i)){c.setAttribute('fill',QUEUED_BG);c.setAttribute('stroke',QUEUED_C);t.setAttribute('fill',QUEUED_C);}
+    else{c.setAttribute('fill',IDLE_BG);c.setAttribute('stroke',IDLE_S);t.setAttribute('fill','var(--text2)');}
+  }
+  var allE=['de01','de02','de13','de14','de25','de36','de45','de78','de89'];
+  allE.forEach(function(id){
+    var l=document.getElementById(id);
+    if(s.edges.includes(id)){l.setAttribute('stroke',EDGE_C);l.setAttribute('stroke-width','2.5');}
+    else{l.setAttribute('stroke','var(--border)');l.setAttribute('stroke-width','1.5');}
+  });
+}
+function dfsNext(){if(dfsCur<dfsSteps.length-1){dfsCur++;dfsRender();}}
+function dfsPrev(){if(dfsCur>0){dfsCur--;dfsRender();}}
+dfsRender();
+</script>
+
+</body>
+</html>
